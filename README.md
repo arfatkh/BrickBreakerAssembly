@@ -1,9 +1,9 @@
 
 # Brick Breaker Game 
-```
+
 Implementation of the popular Brick Breaker Game in MASM615 compaitable Assembly Language
 
-```
+
 
 
 ## Game Description
