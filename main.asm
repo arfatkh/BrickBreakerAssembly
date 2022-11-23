@@ -29,6 +29,12 @@ BallVelocRow dw 5 ;Velocity of the ball
 BallVelocCol dw 5
 
 
+;For the pedal
+PedalWidth dw 60
+PedalHeight dw 8
+pedalRow dw 10
+pedalCol dw 10
+pedalColor db 4 
 
 
 .code
@@ -52,9 +58,79 @@ int 21h
 
 main endp
 
+;Basically a loop that runs 100 times a sec
+gameLoop PROC
+
+
+    StartLoop:
+        ;Get Time using time interrupt
+        mov ah,2Ch
+        int 21h
+
+        cmp dh,TimeTmp ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
+        je StartLoop ;If the time is the same, then we are still in the same second, so we wait
+
+        mov TimeTmp,dh
+       
+        call ClearScreen
+
+        ;Do stuff here
+        call moveBall
+        call DrawBall
+        
+        call DrawPedal
 
 
 
+
+    jmp StartLoop
+
+
+
+
+
+
+ret
+gameLoop endp
+
+;Draws the pedal
+DrawPedal PROC uses AX BX CX DX
+;Input Row Col of the Pedal
+;Input width and height of the Pedal
+
+    mov ax, pedalRow
+    mov DrawPixRow,ax
+
+    mov ax, pedalCol
+    mov DrawPixCol,ax
+
+    mov cx, PedalWidth
+    mov dx, PedalHeight
+
+    mov al, pedalColor
+    mov DrawPixColor,al
+
+    mov cx,PedalHeight  
+    LoopPrintRowPedal:  ;Runs for each row
+        push cx ;save cx
+        push word ptr DrawPixCol ; save DrawPixCol
+
+        mov cx,PedalWidth 
+        LoopPrintColPedal:  ;Runs for each column
+            call DrawPixel
+            inc DrawPixCol
+        loop LoopPrintColPedal
+
+        inc DrawPixRow ;increment row
+
+        pop word ptr DrawPixCol ; restore DrawPixCol
+        pop cx
+
+    loop LoopPrintRowPedal
+
+    ret
+
+DrawPedal ENDP
 
 ;Draws the balls
 DrawBall PROC
@@ -92,42 +168,6 @@ DrawBall PROC
 
 ret
 DrawBall endp
-
-;Basically a loop that runs 100 times a sec
-gameLoop PROC
-
-
-    StartLoop:
-
-
-        ;Get Time using time interrupt
-        mov ah,2Ch
-        int 21h
-
-        cmp dl,TimeTmp ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
-        je StartLoop ;If the time is the same, then we are still in the same second, so we wait
-
-        mov TimeTmp,dl
-        call ClearScreen
-
-        ;Do stuff here
-        call DrawBall
-        call moveBall
-
-
-
-
-    jmp StartLoop
-
-
-
-
-
-
-ret
-gameLoop endp
-
-
 
 ;Moves the ball
 moveBall PROC
@@ -170,8 +210,6 @@ moveBall PROC
 ret
 
 moveBall endp
-
-
 ;Draws a pixel at the specified row and column
 DrawPixel PROC uses ax bx cx dx
 ;Input: DrawPixRow, DrawPixRowCol, DrawPixColor
@@ -188,7 +226,6 @@ DrawPixel PROC uses ax bx cx dx
     ret
 
 DrawPixel endp
-
 ;Clears The Screen
 ClearScreen PROC uses ax bx
 
