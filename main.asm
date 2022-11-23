@@ -81,6 +81,7 @@ gameLoop PROC
         call moveBall
         call DrawBall
         
+        call movePedal
         call DrawPedal
 
 
