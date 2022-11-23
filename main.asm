@@ -32,9 +32,10 @@ BallVelocCol dw 5
 ;For the pedal
 PedalWidth dw 60
 PedalHeight dw 8
-pedalRow dw 10
-pedalCol dw 10
+pedalRow dw 150
+pedalCol dw 50
 pedalColor db 4 
+pedalVelocity dw 10
 
 
 .code
@@ -67,10 +68,10 @@ gameLoop PROC
         mov ah,2Ch
         int 21h
 
-        cmp dh,TimeTmp ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
+        cmp dl,TimeTmp ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
         je StartLoop ;If the time is the same, then we are still in the same second, so we wait
 
-        mov TimeTmp,dh
+        mov TimeTmp,dl
        
         call ClearScreen
 
@@ -132,6 +133,68 @@ DrawPedal PROC uses AX BX CX DX
 
 DrawPedal ENDP
 
+;Moves the pedal based on the keyboard input
+movePedal PROC uses AX BX CX DX
+
+
+    mov ah,01
+    int 16h
+    jz SkipMove  ;ZeroFlag=0 means no key was pressed ==> no need to move the pedal
+
+    ;==> Key was pressed
+    mov ah,00h
+    int 16h ;Get the key pressed
+
+    cmp ah,04DH ;if ight Arrow
+    je movePedalToRight
+    cmp ah,04BH ;if Left Arrow
+    je movePedalToLeft
+    
+    ret
+
+    movePedalToLeft:
+        mov ax, pedalVelocity
+        sub pedalCol,ax
+        
+       ;Check if pedal is out of bounds X axis
+        cmp pedalCol, 0
+        jle FixLeftMove
+        ret
+
+    movePedalToRight:
+        mov ax, pedalVelocity
+        add pedalCol,ax
+
+        ;Check if pedal is out of bounds X axis
+        mov ax, pedalCol
+        add ax, PedalWidth
+        cmp ax, CANVA_SIZE_COL
+        jge FixRightMove
+
+        ret        
+
+
+    FixLeftMove:
+        mov pedalCol, 0
+        ret
+    
+    FixRightMove:
+        mov ax, CANVA_SIZE_COL
+        sub ax, PedalWidth
+        mov pedalCol, ax
+        ret
+
+
+
+
+
+    SkipMove:
+
+
+    ret
+movePedal ENDP
+
+
 ;Draws the balls
 DrawBall PROC
 ;Input Row Col of the Ball
@@ -178,7 +241,7 @@ moveBall PROC
     mov ax,BallVelocCol
     add BallCol,ax
 
-    ;Check if the ball is out of bounds in the X axis
+    ;Check if the ball is out of bounds in the y axis
     mov ax,CANVA_SIZE_ROW
     sub ax,BallSize ;Taking into account the size of the ball
     cmp BallRow,ax
@@ -186,7 +249,7 @@ moveBall PROC
     cmp BallRow,0
     jl BallOutOfBoundsR
 
-    ;Check if the ball is out of bounds in the Y axis
+    ;Check if the ball is out of bounds in the x axis
     mov ax,CANVA_SIZE_COL
     sub ax,BallSize ;Taking into account the size of the ball
     cmp BallCol,ax
