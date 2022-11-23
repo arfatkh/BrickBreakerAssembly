@@ -46,7 +46,9 @@ main PROC
 
    call ClearScreen
 
-    call gameLoop
+   ; call DisplayMenu;  ;And Game loop can be called from this menu
+
+   call gameLoop
 
    
     
