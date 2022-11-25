@@ -23,7 +23,7 @@ DrawPixColor db 0 ;Color to draw
 BallSize dw 10 ;Size of the ball
 BallRow dw 10;
 BallCol dw 4
-BallColor db 4
+BallColor db 5
 
 BallVelocRow dw 5 ;Velocity of the ball
 BallVelocCol dw 5
@@ -32,7 +32,7 @@ BallVelocCol dw 5
 ;For the pedal
 PedalWidth dw 60
 PedalHeight dw 8
-pedalRow dw 150
+pedalRow dw 170
 pedalCol dw 50
 pedalColor db 4 
 pedalVelocity dw 10
@@ -80,7 +80,7 @@ gameLoop PROC
         ;Do stuff here
         call moveBall
         call DrawBall
-        
+
         call movePedal
         call DrawPedal
 
@@ -261,6 +261,58 @@ moveBall PROC
     jl BallOutOfBoundsC
 
 
+
+    ;Check if the ball is colliding with the pedal Using AABB collision Algorithm 
+    ;Source https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
+    ; rect1.x < rect2.x + rect2.w &&
+    ; rect1.x + rect1.w > rect2.x &&
+    ; rect1.y < rect2.y + rect2.h &&
+    ; rect1.h + rect1.y > rect2.y
+
+    ;All these conditions must be true for a collision to occur
+
+    ; BallCol < pedalCol + PedalWidth &&
+    ; BallCol + BallSize > pedalCol &&
+    ; BallRow < pedalRow + PedalHeight &&
+    ; BallSize + BallRow > pedalRow
+    mov ax,pedalCol
+    add ax,PedalWidth
+    cmp BallCol,ax
+    jnl SkipPedalCollision
+
+    mov ax,BallCol
+    add ax,BallSize
+    cmp pedalCol,ax
+    jnl SkipPedalCollision
+
+    mov ax,pedalRow
+    add ax,PedalHeight
+    cmp BallRow,ax
+    jnl SkipPedalCollision
+
+    mov ax,BallRow
+    add ax,BallSize
+    cmp pedalRow,ax
+    jnl SkipPedalCollision
+
+    ;If no skips means collison occured
+
+    ;Change the direction of the ball
+    NEG BallVelocRow ; Negate the velocity of the ball in the y axis
+    ; dec BallRow ;  Move the ball a little bit to the right to avoid the collision 
+
+    ;change ball color
+    inc BallColor
+
+
+    
+
+
+
+
+
+
+
     ret
 
     BallOutOfBoundsR:
@@ -271,6 +323,7 @@ moveBall PROC
         neg BallVelocCol
         ret
     
+    SkipPedalCollision:
 
 
 ret
