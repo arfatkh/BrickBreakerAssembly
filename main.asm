@@ -2,6 +2,25 @@
 .stack 100h
 .data
 
+;/// Structures Definition
+BALL STRUCT 
+    ;FOR THE BALL
+    BSize dw 10 ;Size of the ball
+    Row dw 10;
+    Col dw 4
+    Color db 5
+
+    VelocRow dw 5 ;Velocity of the ball
+    VelocCol dw 5
+
+BALL ENDS
+
+
+
+Balls BALL <40,10,4,5,6,2> , <20,90,4,3,2,2> , <10,4,90,10,10> 
+
+
+
 CANVA_SIZE_ROW dw 199
 CANVA_SIZE_COL dw 319
 COLLISION_MARGIN dw 5
@@ -82,8 +101,11 @@ gameLoop PROC
 
 
         ;Do stuff here
-        call moveBall
-        call DrawBall
+        ; call moveBall
+        call moveAllBalls
+        ; call DrawBall
+
+        call drawAllBalls
 
         call movePedal
         call DrawPedal
@@ -100,6 +122,87 @@ gameLoop PROC
 
 ret
 gameLoop endp
+
+
+;Draws all the balls in the BAlls Array
+drawAllBalls PROC uses si cx ax 
+
+    mov cx,lengthof Balls
+    mov si,offset Balls
+
+    LoopDraw:
+        mov ax, [si].Row
+        mov BallRow,ax
+
+        mov ax, [si].Col
+        mov BallCol,ax
+
+        mov al, [si].Color
+        mov BallColor,al
+
+        call DrawBall
+
+        add si,SIZEOF BALL
+        
+    loop loopDraw
+
+
+
+ret
+drawAllBalls ENDP
+
+;Moves all the balls in the Balls Array
+moveAllBalls PROC uses si cx ax 
+
+    mov cx,lengthof Balls
+    mov si,offset Balls
+
+    LoopMove:
+        mov ax, [si].Row
+        mov BallRow,ax
+
+        mov ax, [si].Col
+        mov BallCol,ax
+
+        mov al, [si].Color
+        mov BallColor,al
+
+        mov ax, [si].VelocRow
+        mov BallVelocRow,ax
+
+        mov ax, [si].VelocCol
+        mov BallVelocCol,ax
+
+
+        call moveBall
+
+        mov ax, BallRow
+        mov [si].Row,ax
+
+        mov ax, BallCol
+        mov [si].Col,ax
+
+        mov al, BallColor
+        mov [si].Color,al
+
+        mov ax, BallVelocRow
+        mov [si].VelocRow,ax
+
+        mov ax, BallVelocCol
+        mov [si].VelocCol,ax
+
+
+
+
+
+        add si,SIZEOF BALL
+        
+    loop LoopMove
+       
+        
+ret
+moveAllBalls ENDP
+
 
 ;Draws the pedal
 DrawPedal PROC uses AX BX CX DX
@@ -203,7 +306,7 @@ movePedal ENDP
 
 
 ;Draws the balls
-DrawBall PROC
+DrawBall PROC uses AX BX CX DX
 ;Input Row Col of the Ball
 ;Input Size of the ball
 
@@ -306,6 +409,14 @@ moveBall PROC
 
     ;Change the direction of the ball
     NEG BallVelocRow ; Negate the velocity of the ball in the y axis
+    ; add BallCol,3 ;Move the ball in the x axis to avoid the collision
+    ; NEG BallVelocCol ; Negate the velocity of the ball in the x axis
+
+    
+    ;Adding interia to the ball based on if the pedal is moving right or left
+    
+
+
     ; dec BallRow ;  Move the ball a little bit to the right to avoid the collision 
 
     ;change ball color
