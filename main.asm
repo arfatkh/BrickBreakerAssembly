@@ -4,7 +4,7 @@
 
 CANVA_SIZE_ROW dw 199
 CANVA_SIZE_COL dw 319
-COLLISION_MARGIN dw 10
+COLLISION_MARGIN dw 5
 
 
 
@@ -46,6 +46,8 @@ main PROC
 
    call ClearScreen
 
+
+
    ; call DisplayMenu;  ;And Game loop can be called from this menu
 
    call gameLoop
@@ -75,7 +77,9 @@ gameLoop PROC
 
         mov TimeTmp,dl
        
+
         call ClearScreen
+
 
         ;Do stuff here
         call moveBall
@@ -247,6 +251,7 @@ moveBall PROC
     ;Check if the ball is out of bounds in the y axis
     mov ax,CANVA_SIZE_ROW
     sub ax,BallSize ;Taking into account the size of the ball
+    sub ax,COLLISION_MARGIN ;Taking into account the margin
     cmp BallRow,ax
     jg BallOutOfBoundsR
     cmp BallRow,0
@@ -255,6 +260,7 @@ moveBall PROC
     ;Check if the ball is out of bounds in the x axis
     mov ax,CANVA_SIZE_COL
     sub ax,BallSize ;Taking into account the size of the ball
+    sub ax,COLLISION_MARGIN ;Taking into account the margin
     cmp BallCol,ax
     jg BallOutOfBoundsC
     cmp BallCol,0
@@ -275,6 +281,7 @@ moveBall PROC
     ; BallCol + BallSize > pedalCol &&
     ; BallRow < pedalRow + PedalHeight &&
     ; BallSize + BallRow > pedalRow
+    
     mov ax,pedalCol
     add ax,PedalWidth
     cmp BallCol,ax
@@ -348,12 +355,11 @@ DrawPixel endp
 ;Clears The Screen
 ClearScreen PROC uses ax bx
 
-
     ;set video mode
     Mov ah,00h ;set video mode
     Mov al,13 ;choose mode 13
     Int 10h
-
+   
 
     ;Set background color
     MOV AH,0Bh 		
