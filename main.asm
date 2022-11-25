@@ -18,6 +18,7 @@ BALL ENDS
 
 
 Balls BALL <40,10,4,5,6,2> , <20,90,4,3,2,2> , <10,4,90,10,10> 
+nBalls dw 3 ;Number of balls
 
 
 
@@ -38,7 +39,7 @@ DrawPixCol dw 0 ;Column to draw
 DrawPixColor db 0 ;Color to draw
 
 
-;FOR THE BALL
+;FOR THE BALL Draw
 BallSize dw 10 ;Size of the ball
 BallRow dw 10;
 BallCol dw 4
@@ -127,7 +128,7 @@ gameLoop endp
 ;Draws all the balls in the BAlls Array
 drawAllBalls PROC uses si cx ax 
 
-    mov cx,lengthof Balls
+    mov cx,nBalls
     mov si,offset Balls
 
     LoopDraw:
@@ -154,7 +155,7 @@ drawAllBalls ENDP
 ;Moves all the balls in the Balls Array
 moveAllBalls PROC uses si cx ax 
 
-    mov cx,lengthof Balls
+    mov cx,nBalls
     mov si,offset Balls
 
     LoopMove:
@@ -419,7 +420,7 @@ moveBall PROC
 
     ; dec BallRow ;  Move the ball a little bit to the right to avoid the collision 
 
-    ;change ball color
+    ;change ball color JUST FOR FUN
     inc BallColor
 
 
