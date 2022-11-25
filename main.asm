@@ -544,11 +544,11 @@ instScreen:
 	mov ah, 00h
 	int 16H
 	cmp al, 'E'
-	je below
+	je belowInstruction
 	cmp al, 'e'
-	je below
+	je belowInstruction
 	jmp instScreen
-below:
+belowInstruction:
 	ret
 Screen_Instructions ENDP
 
