@@ -126,9 +126,7 @@ gameLoop PROC
 
 
 
-
     jmp StartLoop
-
 
 
 
@@ -485,6 +483,7 @@ MenuScreen:
 	je below
 start_game:
 	call gameLoop
+	call Screen_Exit
 	jmp below
 instruct:
 	call Screen_Instructions
@@ -544,11 +543,11 @@ instScreen:
 	mov ah, 00h
 	int 16H
 	cmp al, 'E'
-	je belowInstruction
+	je below
 	cmp al, 'e'
-	je belowInstruction
+	je below
 	jmp instScreen
-belowInstruction:
+below:
 	ret
 Screen_Instructions ENDP
 
@@ -563,9 +562,46 @@ Screen_Highscore ENDP
 ;//////////////////////////////////////////////////////
 Screen_Exit PROC
 	;after the game is finished
+	call ClearScreen
 ;	shows the score of the player 
 ;	Options for player to go back to main menu or exit game 
-
+;	setting curser
+	mov dh, 14	;row
+	mov dl, 6	;cols
+	call setCursor
+;	text prompts
+	lea dx, Text_End_MainMenu
+	mov ah, 09h
+	int 21h
+;	setting curser
+	mov dh, 16	;row
+	mov dl, 8	;cols
+	call setCursor
+;	text prompts
+	lea dx, Text_End_Exit
+	mov ah, 09h
+	int 21h
+;	taking the key as input
+	mov ah, 00h
+	int 16h
+;	Starting the game
+	cmp al, 'M'
+	je exitmenu
+	cmp al,'m'
+	je exitmenu
+	jmp exitnext
+exitmenu:
+	call Screen_Main_Menu
+	jmp exitBelow
+exitnext:
+;	Exit
+	cmp al, 'E'
+	je exitBelow
+	cmp al,'e'
+	je exitBelow
+exitBelow:
+	mov ah, 04ch
+	int 21h
 	ret
 Screen_Exit ENDP
 
@@ -577,5 +613,22 @@ Screen_Pause PROC
 
 	ret
 Screen_Pause ENDP
+;*************************************************
+;*************************************************
+;*************************************************
+;writting and reading from file
+;reading and writing is on a txt file and username highSc is recorded
 
+File_write PROC
+
+	
+	ret
+File_write ENDP
+
+File_read PROC
+
+
+
+	ret
+File_read ENDP
 end main
