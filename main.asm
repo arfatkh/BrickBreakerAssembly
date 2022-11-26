@@ -32,7 +32,7 @@ BRICK ENDS
 
 
 Balls BALL <40,10,4,5,6,2> , <20,90,4,3,2,2> , <10,4,90,10,10> 
-nBalls dw 1 ;Number of balls
+nBalls dw 3 ;Number of balls
 
 
 
