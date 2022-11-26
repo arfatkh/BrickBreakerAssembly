@@ -16,9 +16,23 @@ BALL STRUCT
 BALL ENDS
 
 
+BRICK STRUCT
+    ;FOR THE BRICKS
+    BWidth dw 10
+    BHeight dw 5
+    BRow dw 10;
+    BCol dw 4
+    BColor db 5
+    nHits db 0; Current number of hits
+    nMaxHits db 2; Number of hits to destroy the brick
+
+BRICK ENDS
+
+
+
 
 Balls BALL <40,10,4,5,6,2> , <20,90,4,3,2,2> , <10,4,90,10,10> 
-nBalls dw 3 ;Number of balls
+nBalls dw 1 ;Number of balls
 
 
 
@@ -31,15 +45,17 @@ COLLISION_MARGIN dw 5
 
 ;Time for GameLoop
 TimeTmp db 0
+TimeTmp2 db 0  ;For Brick Drawing delay
 
 
 ;Variables for funtions
+
 DrawPixRow dw 0 ;Row to draw
 DrawPixCol dw 0 ;Column to draw
 DrawPixColor db 0 ;Color to draw
 
 
-;FOR THE BALL Draw
+;FOR THE DrawBall
 BallSize dw 10 ;Size of the ball
 BallRow dw 10;
 BallCol dw 4
@@ -47,6 +63,19 @@ BallColor db 5
 
 BallVelocRow dw 5 ;Velocity of the ball
 BallVelocCol dw 5
+
+
+; FOR THE DrawBrick
+BrickHeight dw 20
+BrickWidth dw 40
+BrickRow dw 10;
+BrickCol dw 4
+BrickColor db 5
+BricknHits db 0; Current number of hits
+BricknMaxHits db 2; Number of hits to destroy the brick
+
+
+
 
 
 ;For the pedal
@@ -64,7 +93,11 @@ main PROC
     mov ax, @data
     mov ds, ax
 
+  
+
+
    call ClearScreen
+
 
 
 
@@ -88,7 +121,8 @@ gameLoop PROC
 
 
     StartLoop:
-        ;Get Time using time interrupt
+
+        ; ;Get Time using time interrupt
         mov ah,2Ch
         int 21h
 
@@ -97,20 +131,29 @@ gameLoop PROC
 
         mov TimeTmp,dl
        
+       
 
         call ClearScreen
 
 
         ;Do stuff here
         ; call moveBall
-        call moveAllBalls
+    
         ; call DrawBall
 
+
         call drawAllBalls
+        call moveAllBalls
 
-        call movePedal
+
+
+        call DrawBrick
+
+
         call DrawPedal
+        call movePedal
 
+       
 
 
 
@@ -151,7 +194,6 @@ drawAllBalls PROC uses si cx ax
 
 ret
 drawAllBalls ENDP
-
 ;Moves all the balls in the Balls Array
 moveAllBalls PROC uses si cx ax 
 
@@ -205,6 +247,41 @@ ret
 moveAllBalls ENDP
 
 
+;Draw Brick [For single brick]
+DrawBrick PROC uses si cx ax 
+
+ ; X-Y coordinates of the ball
+    mov ax, BrickCol
+    mov DrawPixCol,ax
+    mov ax, BrickRow
+    mov DrawPixRow,ax
+    mov al, BrickColor
+    mov DrawPixColor,al
+
+    mov cx,BrickHeight  ;
+    LoopPrintRowBrick:  ;Runs for each row
+        push cx ;save cx
+        push word ptr DrawPixCol ; save DrawPixCol
+
+        mov cx,BrickWidth
+        LoopPrintColBrick:  ;Runs for each column
+            call DrawPixel
+            inc DrawPixCol
+        loop LoopPrintColBrick
+
+        inc DrawPixRow ;increment row
+
+        pop word ptr DrawPixCol ; restore DrawPixCol
+        pop cx
+
+    loop LoopPrintRowBrick
+
+
+    
+
+ret
+DrawBrick ENDP
+
 ;Draws the pedal
 DrawPedal PROC uses AX BX CX DX
 ;Input Row Col of the Pedal
@@ -243,7 +320,6 @@ DrawPedal PROC uses AX BX CX DX
     ret
 
 DrawPedal ENDP
-
 ;Moves the pedal based on the keyboard input
 movePedal PROC uses AX BX CX DX
 
@@ -305,7 +381,6 @@ movePedal PROC uses AX BX CX DX
     ret
 movePedal ENDP
 
-
 ;Draws the balls
 DrawBall PROC uses AX BX CX DX
 ;Input Row Col of the Ball
@@ -342,7 +417,6 @@ DrawBall PROC uses AX BX CX DX
 
 ret
 DrawBall endp
-
 ;Moves the ball
 moveBall PROC
 
@@ -448,6 +522,7 @@ moveBall PROC
 ret
 
 moveBall endp
+
 ;Draws a pixel at the specified row and column
 DrawPixel PROC uses ax bx cx dx
 ;Input: DrawPixRow, DrawPixRowCol, DrawPixColor
@@ -467,18 +542,20 @@ DrawPixel endp
 ;Clears The Screen
 ClearScreen PROC uses ax bx
 
-    ;set video mode
+ ;set video mode
     Mov ah,00h ;set video mode
     Mov al,13 ;choose mode 13
     Int 10h
+  
+    ; ;Set background color
+    ; MOV AH,0Bh 		
+    ; MOV BH,00h 		
+    ; MOV BL,00h 		
+    ; INT 10h    	
+
    
 
-    ;Set background color
-    MOV AH,0Bh 		
-    MOV BH,00h 		
-    MOV BL,00h 		
-    INT 10h    	
-
+ 
 
 ret
 ClearScreen ENDP
