@@ -2,46 +2,17 @@
 .stack 100h
 .data
 
-;/// Structures Definition
-BALL STRUCT 
-    ;FOR THE BALL
-    BSize dw 10 ;Size of the ball
-    Row dw 10;
-    Col dw 4
-    Color db 5
-
-    VelocRow dw 5 ;Velocity of the ball
-    VelocCol dw 5
-
-BALL ENDS
-
-
-BRICK STRUCT
-    ;FOR THE BRICKS
-    BWidth dw 10
-    BHeight dw 5
-    BRow dw 10;
-    BCol dw 4
-    BColor db 5
-    nHits db 0; Current number of hits
-    nMaxHits db 2; Number of hits to destroy the brick
-
-BRICK ENDS
-
-
-
-
-Balls BALL <40,10,4,5,6,2> , <20,90,4,3,2,2> , <10,4,90,10,10> 
-nBalls dw 3 ;Number of balls
-
-
-
 CANVA_SIZE_ROW dw 199
 CANVA_SIZE_COL dw 319
-COLLISION_MARGIN dw 5
+COLLISION_MARGIN dw 10
 
 
-Username db 21
+;	File handling Variables
+filename db 'Scores.txt',0	;the name of the file
+fhandle dw 	?	;the address to be returned by ax
+buffer dw 100	;100 characters
+
+
 
 
 ;	WElcome Screen prompts
@@ -70,46 +41,38 @@ Text_End_Exit db 'Exit(E)','$'			;Exit game button
 
 ;Time for GameLoop
 TimeTmp db 0
-TimeTmp2 db 0  ;For Brick Drawing delay
 
+;Playerdetails
+Username db 21
+Score db 0
+CurrentLevel db 1
 
-
-
+Player Struct
+	Name db 21
+	Score db 0
+	CurrentLevel db 1
+Player ends	
 
 ;Variables for funtions
-
 DrawPixRow dw 0 ;Row to draw
 DrawPixCol dw 0 ;Column to draw
 DrawPixColor db 0 ;Color to draw
 
 
-;FOR THE DrawBall
+;FOR THE BALL
 BallSize dw 10 ;Size of the ball
 BallRow dw 10;
 BallCol dw 4
-BallColor db 5
+BallColor db 4
 
 BallVelocRow dw 5 ;Velocity of the ball
 BallVelocCol dw 5
 
 
-; FOR THE DrawBrick
-BrickHeight dw 20
-BrickWidth dw 40
-BrickRow dw 10;
-BrickCol dw 4
-BrickColor db 5
-BricknHits db 0; Current number of hits
-BricknMaxHits db 2; Number of hits to destroy the brick
-
-
-
-
-
 ;For the pedal
 PedalWidth dw 60
 PedalHeight dw 8
-pedalRow dw 170
+pedalRow dw 150
 pedalCol dw 50
 pedalColor db 4 
 pedalVelocity dw 10
@@ -121,15 +84,10 @@ main PROC
     mov ax, @data
     mov ds, ax
 
-  
-
-
    call ClearScreen
-
 
 ;	WElcome screen
 	call Screen_Welcome
-
 
    ; call DisplayMenu;  ;And Game loop can be called from this menu
 
@@ -160,8 +118,7 @@ gameLoop PROC
 
 
     StartLoop:
-
-        ; ;Get Time using time interrupt
+        ;Get Time using time interrupt
         mov ah,2Ch
         int 21h
 
@@ -170,29 +127,15 @@ gameLoop PROC
 
         mov TimeTmp,dl
        
-       
-
         call ClearScreen
 
-
         ;Do stuff here
-        ; call moveBall
-    
-        ; call DrawBall
-
-
-        call drawAllBalls
-        call moveAllBalls
-
-
-
-        call DrawBrick
-
-
-        call DrawPedal
+        call moveBall
+        call DrawBall
+        
         call movePedal
+        call DrawPedal
 
-       
 
 
     jmp StartLoop
@@ -203,121 +146,6 @@ gameLoop PROC
 
 ret
 gameLoop endp
-
-
-;Draws all the balls in the BAlls Array
-drawAllBalls PROC uses si cx ax 
-
-    mov cx,nBalls
-    mov si,offset Balls
-
-    LoopDraw:
-        mov ax, [si].Row
-        mov BallRow,ax
-
-        mov ax, [si].Col
-        mov BallCol,ax
-
-        mov al, [si].Color
-        mov BallColor,al
-
-        call DrawBall
-
-        add si,SIZEOF BALL
-        
-    loop loopDraw
-
-
-
-ret
-drawAllBalls ENDP
-;Moves all the balls in the Balls Array
-moveAllBalls PROC uses si cx ax 
-
-    mov cx,nBalls
-    mov si,offset Balls
-
-    LoopMove:
-        mov ax, [si].Row
-        mov BallRow,ax
-
-        mov ax, [si].Col
-        mov BallCol,ax
-
-        mov al, [si].Color
-        mov BallColor,al
-
-        mov ax, [si].VelocRow
-        mov BallVelocRow,ax
-
-        mov ax, [si].VelocCol
-        mov BallVelocCol,ax
-
-
-        call moveBall
-
-        mov ax, BallRow
-        mov [si].Row,ax
-
-        mov ax, BallCol
-        mov [si].Col,ax
-
-        mov al, BallColor
-        mov [si].Color,al
-
-        mov ax, BallVelocRow
-        mov [si].VelocRow,ax
-
-        mov ax, BallVelocCol
-        mov [si].VelocCol,ax
-
-
-
-
-
-        add si,SIZEOF BALL
-        
-    loop LoopMove
-       
-        
-ret
-moveAllBalls ENDP
-
-
-;Draw Brick [For single brick]
-DrawBrick PROC uses si cx ax 
-
- ; X-Y coordinates of the ball
-    mov ax, BrickCol
-    mov DrawPixCol,ax
-    mov ax, BrickRow
-    mov DrawPixRow,ax
-    mov al, BrickColor
-    mov DrawPixColor,al
-
-    mov cx,BrickHeight  ;
-    LoopPrintRowBrick:  ;Runs for each row
-        push cx ;save cx
-        push word ptr DrawPixCol ; save DrawPixCol
-
-        mov cx,BrickWidth
-        LoopPrintColBrick:  ;Runs for each column
-            call DrawPixel
-            inc DrawPixCol
-        loop LoopPrintColBrick
-
-        inc DrawPixRow ;increment row
-
-        pop word ptr DrawPixCol ; restore DrawPixCol
-        pop cx
-
-    loop LoopPrintRowBrick
-
-
-    
-
-ret
-DrawBrick ENDP
 
 ;Draws the pedal
 DrawPedal PROC uses AX BX CX DX
@@ -357,6 +185,7 @@ DrawPedal PROC uses AX BX CX DX
     ret
 
 DrawPedal ENDP
+
 ;Moves the pedal based on the keyboard input
 movePedal PROC uses AX BX CX DX
 
@@ -418,8 +247,9 @@ movePedal PROC uses AX BX CX DX
     ret
 movePedal ENDP
 
+
 ;Draws the balls
-DrawBall PROC uses AX BX CX DX
+DrawBall PROC
 ;Input Row Col of the Ball
 ;Input Size of the ball
 
@@ -454,6 +284,7 @@ DrawBall PROC uses AX BX CX DX
 
 ret
 DrawBall endp
+
 ;Moves the ball
 moveBall PROC
 
@@ -466,7 +297,6 @@ moveBall PROC
     ;Check if the ball is out of bounds in the y axis
     mov ax,CANVA_SIZE_ROW
     sub ax,BallSize ;Taking into account the size of the ball
-    sub ax,COLLISION_MARGIN ;Taking into account the margin
     cmp BallRow,ax
     jg BallOutOfBoundsR
     cmp BallRow,0
@@ -475,72 +305,10 @@ moveBall PROC
     ;Check if the ball is out of bounds in the x axis
     mov ax,CANVA_SIZE_COL
     sub ax,BallSize ;Taking into account the size of the ball
-    sub ax,COLLISION_MARGIN ;Taking into account the margin
     cmp BallCol,ax
     jg BallOutOfBoundsC
     cmp BallCol,0
     jl BallOutOfBoundsC
-
-
-
-    ;Check if the ball is colliding with the pedal Using AABB collision Algorithm 
-    ;Source https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
-    ; rect1.x < rect2.x + rect2.w &&
-    ; rect1.x + rect1.w > rect2.x &&
-    ; rect1.y < rect2.y + rect2.h &&
-    ; rect1.h + rect1.y > rect2.y
-
-    ;All these conditions must be true for a collision to occur
-
-    ; BallCol < pedalCol + PedalWidth &&
-    ; BallCol + BallSize > pedalCol &&
-    ; BallRow < pedalRow + PedalHeight &&
-    ; BallSize + BallRow > pedalRow
-    
-    mov ax,pedalCol
-    add ax,PedalWidth
-    cmp BallCol,ax
-    jnl SkipPedalCollision
-
-    mov ax,BallCol
-    add ax,BallSize
-    cmp pedalCol,ax
-    jnl SkipPedalCollision
-
-    mov ax,pedalRow
-    add ax,PedalHeight
-    cmp BallRow,ax
-    jnl SkipPedalCollision
-
-    mov ax,BallRow
-    add ax,BallSize
-    cmp pedalRow,ax
-    jnl SkipPedalCollision
-
-    ;If no skips means collison occured
-
-    ;Change the direction of the ball
-    NEG BallVelocRow ; Negate the velocity of the ball in the y axis
-    ; add BallCol,3 ;Move the ball in the x axis to avoid the collision
-    ; NEG BallVelocCol ; Negate the velocity of the ball in the x axis
-
-    
-    ;Adding interia to the ball based on if the pedal is moving right or left
-    
-
-
-    ; dec BallRow ;  Move the ball a little bit to the right to avoid the collision 
-
-    ;change ball color JUST FOR FUN
-    inc BallColor
-
-
-    
-
-
-
-
-
 
 
     ret
@@ -553,13 +321,11 @@ moveBall PROC
         neg BallVelocCol
         ret
     
-    SkipPedalCollision:
 
 
 ret
 
 moveBall endp
-
 ;Draws a pixel at the specified row and column
 DrawPixel PROC uses ax bx cx dx
 ;Input: DrawPixRow, DrawPixRowCol, DrawPixColor
@@ -579,20 +345,19 @@ DrawPixel endp
 ;Clears The Screen
 ClearScreen PROC uses ax bx
 
- ;set video mode
+
+    ;set video mode
     Mov ah,00h ;set video mode
     Mov al,13 ;choose mode 13
     Int 10h
-  
-    ; ;Set background color
-    ; MOV AH,0Bh 		
-    ; MOV BH,00h 		
-    ; MOV BL,00h 		
-    ; INT 10h    	
 
-   
 
- 
+    ;Set background color
+    MOV AH,0Bh 		
+    MOV BH,00h 		
+    MOV BL,00h 		
+    INT 10h    	
+
 
 ret
 ClearScreen ENDP
@@ -810,6 +575,35 @@ Screen_Highscore ENDP
 Screen_Exit PROC
 	;after the game is finished
 	call ClearScreen
+; open the file and write the details of the player
+	call File_open
+	;call File_openExisting
+; inserting the player details in buffer Variables
+	mov si, 0
+	mov cx, 0
+	lea di, Username
+write_again:
+	cmp [di], '$'
+	je write_exit
+	mov buffer[si], [di]
+	inc si
+	inc cx
+	jmp write_again
+write_exit:
+	mov buffer[si], 32
+	inc si
+	inc cx
+	mov buffer[si],Score
+	inc si
+	inc cx
+	mov buffer[si], 32
+	inc si
+	inc cx
+	mov buffer[si],CurrentLevel
+
+	call File_write
+
+	call File_close
 ;	shows the score of the player 
 ;	Options for player to go back to main menu or exit game 
 ;	setting curser
@@ -865,10 +659,45 @@ Screen_Pause ENDP
 ;*************************************************
 ;writting and reading from file
 ;reading and writing is on a txt file and username highSc is recorded
+File_open PROC
 
-File_write PROC
+	mov ah, 3ch
+	lea dx, filename
+	mov cl, 0
+	int 21h
+	mov fhandle, ax	
 
+	ret
+File_open ENDP
+
+File_openExisting PROC
 	
+	mov ah, 3dh
+	lea dx, filename
+	mov al, 2
+	int 21h
+	mov fhandle, ax
+
+	ret
+File_openExisting ENDP
+
+File_close PROC
+	
+	mov ah, 3eh
+	mov bx, fhandle
+	int 21h
+
+	ret
+File_close ENDP
+
+File_write PROC uses cx
+	
+	mov ah, 40h
+	mov bx, fhandle
+	lea dx, buffer
+	;mov cx,		;number of characters
+	int 21h
+
 	ret
 File_write ENDP
 
