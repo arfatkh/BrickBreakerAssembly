@@ -32,7 +32,7 @@ BRICK ENDS
 
 
 Balls BALL <40,10,4,5,6,2> , <20,90,4,3,2,2> , <10,4,90,10,10> 
-nBalls dw 3 ;Number of balls
+nBalls dw 1 ;Number of balls
 
 
 
@@ -41,7 +41,7 @@ CANVA_SIZE_COL dw 319
 COLLISION_MARGIN dw 5
 
 
-Username db 21
+
 
 
 ;	WElcome Screen prompts
@@ -100,19 +100,27 @@ BrickRow dw 10;
 BrickCol dw 4
 BrickColor db 5
 BricknHits db 0; Current number of hits
-BricknMaxHits db 2; Number of hits to destroy the brick
+BricknMaxHits db 1; Number of hits to destroy the brick
 
 
 
 
 
 ;For the pedal
-PedalWidth dw 60
+PedalWidth dw 8
 PedalHeight dw 8
 pedalRow dw 170
 pedalCol dw 50
-pedalColor db 4 
+pedalColor db 0ffh 
 pedalVelocity dw 10
+
+
+
+;PLAYER DETAIlS
+Username db 21
+Score db 0  
+currentLevel db 0 
+
 
 
 .code
@@ -790,11 +798,11 @@ instScreen:
 	mov ah, 00h
 	int 16H
 	cmp al, 'E'
-	je below
+	je belowIns
 	cmp al, 'e'
-	je below
+	je belowIns
 	jmp instScreen
-below:
+belowIns:
 	ret
 Screen_Instructions ENDP
 
