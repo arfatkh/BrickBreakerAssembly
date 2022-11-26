@@ -41,11 +41,39 @@ CANVA_SIZE_COL dw 319
 COLLISION_MARGIN dw 5
 
 
+Username db 21
+
+
+;	WElcome Screen prompts
+Text_Welcome_Game db 'Brick Breaker','$'
+Text_Welcome db 'Enter Username:','$'
+
+;Main Menu text prompts
+Text_MainMenu_start db 'Start(S)','$'	;Start button
+Text_MainMenu_highscore	db 'HighScores(H)','$';highScore button
+Text_MainMenu_Instruction db 'Instructions(I)','$';Instructions button
+Text_MainMenu_Exit db 'Exit(E)','$'
+;Instructions screen prompts
+Text_Instruction_head db 'Instructions','$'
+Text_Instruction_content1 db 'press esc key to exit the game','$'
+Text_Instruction_content2 db 'Left and Right arrow keys to move bar','$'
+Text_Instruction_content3 db 'Each level is more difficult than previous','$'
+Text_Instruction_content4 db 'Try not to lose ;)','$'
+Text_Instruction_content5 db 'Press E to back to main menu','$'
+;Pause Screen text prompts
+Text_Pause_Resume db 'Resume(R)','$'	;Resume button
+Text_Pause_Exit db 'Exit(E)','$'		;Exit button
+;End Screen text prompts
+Text_End_MainMenu db 'Main Menu(M)','$'	;Menu button
+Text_End_Exit db 'Exit(E)','$'			;Exit game button
 
 
 ;Time for GameLoop
 TimeTmp db 0
 TimeTmp2 db 0  ;For Brick Drawing delay
+
+
+
 
 
 ;Variables for funtions
@@ -99,11 +127,13 @@ main PROC
    call ClearScreen
 
 
+;	WElcome screen
+	call Screen_Welcome
 
 
    ; call DisplayMenu;  ;And Game loop can be called from this menu
 
-   call gameLoop
+   ;call gameLoop
 
    
     
@@ -115,6 +145,15 @@ mov ah,04ch
 int 21h
 
 main endp
+
+;before calling this function set the rows and cols : dh and dl
+setCursor PROC
+	mov ah, 02h
+	mov bh, 00h
+	int 10H
+
+	ret
+setCursor ENDP
 
 ;Basically a loop that runs 100 times a sec
 gameLoop PROC
@@ -156,9 +195,7 @@ gameLoop PROC
        
 
 
-
     jmp StartLoop
-
 
 
 
@@ -560,4 +597,285 @@ ClearScreen PROC uses ax bx
 ret
 ClearScreen ENDP
 
+
+;//////////////////////////////////////////////////////
+;	Screens Display Functions
+;//////////////////////////////////////////////////////
+
+
+
+
+;	Welcome screen 1st screen when game is openned
+Screen_Welcome PROC near
+	;takes input the name of the player
+
+;	setting curser position
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 4	; row 
+	mov dl, 12	; cols
+	int 10H
+;	outputing Name of the game
+	lea dx, Text_Welcome_Game
+	mov ah, 09h
+	int 21h
+
+;	setting curser position
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 10	; row 
+	mov dl, 5	; cols
+	int 10H
+;	outputing the string
+	lea dx, Text_Welcome
+	mov ah, 09h
+	int 21h
+
+	lea dx, Username ; load our pointer to the beginning of the structure
+	mov ah, 10 ; GetLine function
+	int 21h
+	mov [Username], 0
+	
+	xor dx, dx
+	mov dx, offset Username
+	mov ah, 09h
+	int 21h
+
+	call Screen_Main_Menu
+
+	ret
+Screen_Welcome ENDP
+
+;	Main Menu and Exit menu fuctions
+
+;//////////////////////////////////////////////////////
+;//////////////////////////////////////////////////////
+
+Screen_Main_Menu PROC near	
+;	printes the name of Player at the top
+MenuScreen:
+	call ClearScreen
+;	setting the curser
+	mov ah, 02h
+	mov bh, 00h
+	mov dh, 2	; rows
+	mov dl, 12	;cols
+	int 10H
+;	printing the user name
+	lea dx, Username
+	mov ah, 09h
+	int 21h
+
+
+;	printing the text and buttons for the main menu
+	;setting curser
+	mov dh, 6
+	mov dl, 10
+	call setCursor
+
+	lea dx, Text_MainMenu_start
+	mov ah, 09h
+	int 21h
+
+;	Instruction Screen button
+	mov dh, 8
+	mov dl, 10
+	call setCursor
+
+	lea dx, Text_MainMenu_Instruction
+	mov ah, 09h
+	int 21h
+
+
+;	highScore screen and the names of the player
+	mov dh, 10
+	mov dl, 10
+	call setCursor
+
+	lea dx, Text_MainMenu_highscore
+	mov ah, 09h
+	int 21h
+
+;	Exit game button
+	mov dh, 12
+	mov dl, 10
+	call setCursor
+
+	lea dx, Text_MainMenu_Exit
+	mov ah, 09h
+	int 21h
+
+;	Choosing the next page by key pressing
+	mov ah, 00h
+	int 16h
+;	Starting the game
+	cmp al, 'S'
+	je start_game
+	cmp al,'s'
+	je start_game
+;	Instruction
+	cmp al, 'I'
+	je instruct
+	cmp al,'i'
+	je instruct
+;	HighScores
+	cmp al, 'H'
+	je highSc
+	cmp al,'h'
+	je highSc
+;	Exit
+	cmp al, 'E'
+	je below
+	cmp al,'e'
+	je below
+start_game:
+	call gameLoop
+	call Screen_Exit
+	jmp below
+instruct:
+	call Screen_Instructions
+	jmp MenuScreen
+highSc:
+	call Screen_Highscore
+	jmp MenuScreen
+below:
+	ret
+Screen_Main_Menu ENDP
+
+Screen_Instructions PROC
+	;a bunch of Instruction
+instScreen:
+	call ClearScreen
+;	setting curser
+	mov dh, 2
+	mov dl, 8
+	call setCursor
+;	text prompts
+	lea dx, Text_Instruction_content1
+	mov ah, 09h
+	int 21h
+;	setting curser
+	mov dh, 4
+	mov dl, 2
+	call setCursor
+;	text prompts
+	lea dx, Text_Instruction_content2
+	mov ah, 09h
+	int 21h
+;	setting curser
+	mov dh, 12
+	mov dl, 2
+	call setCursor
+;	text prompts
+	lea dx, Text_Instruction_content3
+	mov ah, 09h
+	int 21h
+;	setting curser
+	mov dh, 14
+	mov dl, 2
+	call setCursor
+;	text prompts
+	lea dx, Text_Instruction_content4
+	mov ah, 09h
+	int 21h
+;	setting curser
+	mov dh, 16
+	mov dl, 10
+	call setCursor
+;	text prompts
+	lea dx, Text_Instruction_content5
+	mov ah, 09h
+	int 21h
+
+	mov ah, 00h
+	int 16H
+	cmp al, 'E'
+	je below
+	cmp al, 'e'
+	je below
+	jmp instScreen
+below:
+	ret
+Screen_Instructions ENDP
+
+Screen_Highscore PROC
+	;reads from the file and prints the player names and their score
+
+
+	ret
+Screen_Highscore ENDP
+
+;//////////////////////////////////////////////////////
+;//////////////////////////////////////////////////////
+Screen_Exit PROC
+	;after the game is finished
+	call ClearScreen
+;	shows the score of the player 
+;	Options for player to go back to main menu or exit game 
+;	setting curser
+	mov dh, 14	;row
+	mov dl, 6	;cols
+	call setCursor
+;	text prompts
+	lea dx, Text_End_MainMenu
+	mov ah, 09h
+	int 21h
+;	setting curser
+	mov dh, 16	;row
+	mov dl, 8	;cols
+	call setCursor
+;	text prompts
+	lea dx, Text_End_Exit
+	mov ah, 09h
+	int 21h
+;	taking the key as input
+	mov ah, 00h
+	int 16h
+;	Starting the game
+	cmp al, 'M'
+	je exitmenu
+	cmp al,'m'
+	je exitmenu
+	jmp exitnext
+exitmenu:
+	call Screen_Main_Menu
+	jmp exitBelow
+exitnext:
+;	Exit
+	cmp al, 'E'
+	je exitBelow
+	cmp al,'e'
+	je exitBelow
+exitBelow:
+	mov ah, 04ch
+	int 21h
+	ret
+Screen_Exit ENDP
+
+;	Pause Screen when the game is running
+Screen_Pause PROC
+	;exit button
+
+;	continue button
+
+	ret
+Screen_Pause ENDP
+;*************************************************
+;*************************************************
+;*************************************************
+;writting and reading from file
+;reading and writing is on a txt file and username highSc is recorded
+
+File_write PROC
+
+	
+	ret
+File_write ENDP
+
+File_read PROC
+
+
+
+	ret
+File_read ENDP
 end main
