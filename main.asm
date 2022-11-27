@@ -405,8 +405,9 @@ movePedal PROC uses AX BX CX DX
     mov ah,00h
     int 16h ;Get the key pressed
 
-    ; cmp ah, 81h
-    ; je ShowPause
+    cmp ah, 01h
+    je ShowPause
+    
     cmp ah,04DH ;if ight Arrow
     je movePedalToRight
     cmp ah,04BH ;if Left Arrow
@@ -446,8 +447,8 @@ movePedal PROC uses AX BX CX DX
         mov pedalCol, ax
         ret
 
-    ; ShowPause:
-    ; 	call Screen_Pause
+    ShowPause:
+    	call Screen_Pause
  
 
 
