@@ -171,7 +171,7 @@ gameLoop PROC
 
     StartLoop:
 
-        ;Get Time using time interrupt
+        ; ;Get Time using time interrupt
         mov ah,2Ch
         int 21h
 
