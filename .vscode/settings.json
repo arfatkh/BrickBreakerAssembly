@@ -1,3 +1,4 @@
 {
-    "masmtasm.ASM.emulator": "dosbox"
+    "masmtasm.ASM.emulator": "jsdos",
+    "masmtasm.ASM.assembler": "MASM-v6.11"
 }

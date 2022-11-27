@@ -2,6 +2,41 @@
 .stack 100h
 .data
 
+
+;/// Structures Definition
+BALL STRUCT 
+    ;FOR THE BALL
+    BSize dw 10 ;Size of the ball
+    Row dw 10;
+    Col dw 4
+    Color db 5
+
+    VelocRow dw 5 ;Velocity of the ball
+    VelocCol dw 5
+
+BALL ENDS
+
+
+BRICK STRUCT
+    ;FOR THE BRICKS
+    BWidth dw 10
+    BHeight dw 5
+    BRow dw 10;
+    BCol dw 4
+    BColor db 5
+    nHits db 0; Current number of hits
+    nMaxHits db 2; Number of hits to destroy the brick
+
+BRICK ENDS
+
+
+
+
+Balls BALL <4,10,4,5,6,2> , <2,90,4,3,2,2> , <13,7,30,10,10> ,<4,10,4,5,6,2> , <2,90,4,3,2,2> , <1,4,90,10,10> 
+nBalls dw 6 ;Number of balls
+
+
+
 CANVA_SIZE_ROW dw 199
 CANVA_SIZE_COL dw 319
 COLLISION_MARGIN dw 10
@@ -39,19 +74,16 @@ Text_End_MainMenu db 'Main Menu(M)','$'	;Menu button
 Text_End_Exit db 'Exit(E)','$'			;Exit game button
 
 
-;Time for GameLoop
-TimeTmp db 0
+
+TimeTmp db 0fh
+TimeTmp2 db 0  ;For Brick Drawing delay
+
 
 ;Playerdetails
 Username db 21
 Score db 0
 CurrentLevel db 1
 
-Player Struct
-	Name db 21
-	Score db 0
-	CurrentLevel db 1
-Player ends	
 
 ;Variables for funtions
 DrawPixRow dw 0 ;Row to draw
@@ -73,9 +105,36 @@ BallVelocCol dw 5
 PedalWidth dw 60
 PedalHeight dw 8
 pedalRow dw 150
+
+; FOR THE DrawBrick
+BrickHeight db 42
+BrickWidth db 4
+BrickRow db 10;
+BrickCol db 4
+BrickColor db 5
+BricknHits db 0; Current number of hits
+BricknMaxHits db 1; Number of hits to destroy the brick
+
+
+
+
+
+;For the pedal
+PedalWidth dw 30
+PedalHeight dw 4
+pedalRow dw 170
+
 pedalCol dw 50
-pedalColor db 4 
+pedalColor db 0ffh 
 pedalVelocity dw 10
+
+
+
+;PLAYER DETAIlS
+Username db 21 dup('$')
+Score db 0  
+currentLevel db 0 
+
 
 
 .code
@@ -84,6 +143,11 @@ main PROC
     mov ax, @data
     mov ds, ax
 
+ Mov ah,00h ;set video mode
+    Mov al,13 ;choose mode 13
+    Int 10h  
+
+
    call ClearScreen
 
 ;	WElcome screen
@@ -91,7 +155,7 @@ main PROC
 
    ; call DisplayMenu;  ;And Game loop can be called from this menu
 
-   ;call gameLoop
+   call gameLoop
 
    
     
@@ -127,12 +191,57 @@ gameLoop PROC
 
         mov TimeTmp,dl
        
+
         call ClearScreen
 
         ;Do stuff here
         call moveBall
         call DrawBall
         
+
+
+        ; mov ah,2Ch
+        ; int 21h
+
+
+
+        ; cmp dl,TimeTmp2 ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
+        ; je skip1 ;If the time is the same, then we are still in the same second, so we wait
+
+        ; mov TimeTmp2,dl
+        call ClearScreen
+
+
+
+        ;Wait 10 microseconds
+        mov ax, 1680
+        mov cx, 100
+        mov dx, 0
+        int 1Ah
+     
+
+        skip1:
+
+
+        ;Do stuff here
+        call moveBall
+    
+        call DrawBall
+
+
+        call drawAllBalls
+        call moveAllBalls
+
+
+
+        ; call DrawBrick
+
+
+
+
+
+        call DrawPedal
+
         call movePedal
         call DrawPedal
 
@@ -146,6 +255,142 @@ gameLoop PROC
 
 ret
 gameLoop endp
+
+
+
+;Draws all the balls in the BAlls Array
+drawAllBalls PROC uses si cx ax 
+
+    mov cx,nBalls
+    mov si,offset Balls
+
+    LoopDraw:
+        mov ax, [si].Row
+        mov BallRow,ax
+
+        mov ax, [si].Col
+        mov BallCol,ax
+
+        mov al, [si].Color
+        mov BallColor,al
+
+        call DrawBall
+
+        add si,SIZEOF BALL
+        
+    loop loopDraw
+
+
+
+ret
+drawAllBalls ENDP
+;Moves all the balls in the Balls Array
+moveAllBalls PROC uses si cx ax 
+
+    mov cx,nBalls
+    mov si,offset Balls
+
+    LoopMove:
+        mov ax, [si].Row
+        mov BallRow,ax
+
+        mov ax, [si].Col
+        mov BallCol,ax
+
+        mov al, [si].Color
+        mov BallColor,al
+
+        mov ax, [si].VelocRow
+        mov BallVelocRow,ax
+
+        mov ax, [si].VelocCol
+        mov BallVelocCol,ax
+
+
+        call moveBall
+
+        mov ax, BallRow
+        mov [si].Row,ax
+
+        mov ax, BallCol
+        mov [si].Col,ax
+
+        mov al, BallColor
+        mov [si].Color,al
+
+        mov ax, BallVelocRow
+        mov [si].VelocRow,ax
+
+        mov ax, BallVelocCol
+        mov [si].VelocCol,ax
+
+
+
+
+
+        add si,SIZEOF BALL
+        
+    loop LoopMove
+       
+        
+ret
+moveAllBalls ENDP
+
+
+;Draw Brick [For single brick]
+DrawBrick PROC uses si cx ax bx
+
+ ; X-Y coordinates of the ball
+    ; mov ax, BrickCol
+    ; mov DrawPixCol,ax
+    ; mov ax, BrickRow
+    ; mov DrawPixRow,ax
+    ; mov al, BrickColor
+    ; mov DrawPixColor,al
+
+    ; mov cx,BrickHeight  ;
+    ; LoopPrintRowBrick:  ;Runs for each row
+    ;     push cx ;save cx
+    ;     push word ptr DrawPixCol ; save DrawPixCol
+
+    ;     mov cx,BrickWidth
+    ;     LoopPrintColBrick:  ;Runs for each column
+    ;         call DrawPixel
+    ;         inc DrawPixCol
+    ;     loop LoopPrintColBrick
+
+    ;     inc DrawPixRow ;increment row
+
+    ;     pop word ptr DrawPixCol ; restore DrawPixCol
+    ;     pop cx
+
+    ; loop LoopPrintRowBrick
+
+
+    mov ah, 6
+
+    mov al, BrickHeight
+    mov bh, 4
+
+    mov ch, BrickRow  ;Top Row
+    mov cl, BrickCol  ;Left Column
+
+
+    mov dh,ch   ;Bottom Row
+    add dh,BrickHeight
+
+
+    mov dl, BrickCol  ;Right Column
+    add dl,BrickWidth ;
+
+    int 10h
+
+
+
+    
+
+ret
+DrawBrick ENDP
 
 ;Draws the pedal
 DrawPedal PROC uses AX BX CX DX
@@ -345,6 +590,19 @@ DrawPixel PROC uses ax bx cx dx
     ret
 
 DrawPixel endp
+
+; DrawMac MACRO Color x ,y
+
+;     MOV AH, 0Ch
+;     MOV AL, Color
+;     MOV CX, x
+;     MOV DX, y
+;     INT 10H
+
+
+; DrawMac ENDM
+
+
 ;Clears The Screen
 ClearScreen PROC uses ax bx
 
@@ -353,6 +611,37 @@ ClearScreen PROC uses ax bx
     Mov ah,00h ;set video mode
     Mov al,13 ;choose mode 13
     Int 10h
+
+
+;  set video mode
+    ; Mov ah,00h ;set video mode
+    ; Mov al,13 ;choose mode 13
+    ; Int 10h
+  
+    ; ;Set background color
+    ; mov al,00h
+    ; MOV AH,0Bh 		
+    ; MOV BH,00h 		
+    ; MOV BL,00h 		
+    ; INT 10h    	
+
+    ; ; ;Set foreground color 
+    mov al,00h
+    MOV AH,0Bh
+    MOV BH,00h
+    MOV BL,00h
+    INT 10h
+
+
+   mov ah,06h
+    xor al,al
+    xor cx,cx
+    mov dh,30
+    mov dl,80
+    mov bh,00010000b
+    int 10h
+
+   
 
 
     ;Set background color
@@ -558,11 +847,11 @@ instScreen:
 	mov ah, 00h
 	int 16H
 	cmp al, 'E'
-	je below
+	je belowIns
 	cmp al, 'e'
-	je below
+	je belowIns
 	jmp instScreen
-below:
+belowIns:
 	ret
 Screen_Instructions ENDP
 
