@@ -583,27 +583,30 @@ Screen_Exit PROC
 	mov cx, 0
 	lea di, Username
 write_again:
-	cmp [di], '$'
+	mov ax, [di]
+	cmp ax, 0
 	je write_exit
-	mov buffer[si], [di]
+	mov ax, [di]
+	mov buffer[si], ax
 	inc si
 	inc cx
+	inc di
 	jmp write_again
 write_exit:
+	
+	mov ax, word PTR Score
+	mov buffer[si],ax	
+	inc si
+	inc cx
 	mov buffer[si], 32
 	inc si
 	inc cx
-	mov buffer[si],Score
-	inc si
-	inc cx
-	mov buffer[si], 32
-	inc si
-	inc cx
-	mov buffer[si],CurrentLevel
+	mov ax, word PTR CurrentLevel
+	mov buffer[si], ax
 
 	call File_write
 
-	call File_close
+	call File_close 
 ;	shows the score of the player 
 ;	Options for player to go back to main menu or exit game 
 ;	setting curser
@@ -648,9 +651,41 @@ Screen_Exit ENDP
 
 ;	Pause Screen when the game is running
 Screen_Pause PROC
-	;exit button
+	mov dh, 14	;row
+	mov dl, 6	;cols
+	call setCursor
+;	text Resume
+	lea dx, Text_Pause_Resume
+	mov ah, 09h
+	int 21h
+;	setting curser
+	mov dh, 16	;row
+	mov dl, 8	;cols
+	call setCursor
 
-;	continue button
+	;exit button
+	lea dx, Text_Pause_Exit
+	mov ah, 09h
+	int 21h
+;	taking the key as input
+	mov ah, 00h
+	int 16h
+;	Starting the game
+	cmp al, 'R'
+	je pauseResume
+	cmp al,'r'
+	je pauseResume
+	jmp pauseExit
+pauseResume:
+	ret
+pauseExit:
+;	Exit
+	cmp al, 'E'
+	je exitBelow
+	cmp al,'e'
+	je exitBelow
+exitBelow:
+	call Screen_Exit
 
 	ret
 Screen_Pause ENDP
