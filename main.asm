@@ -33,7 +33,7 @@ BRICK ENDS
 
 
 Balls BALL <4,10,4,5,6,2> , <2,90,4,3,2,2> , <13,7,30,10,10> ,<4,10,4,5,6,2> , <2,90,4,3,2,2> , <1,4,90,10,10> 
-nBalls dw 6 ;Number of balls
+nBalls dw 3 ;Number of balls
 
 
 
@@ -79,10 +79,12 @@ TimeTmp db 0fh
 TimeTmp2 db 0  ;For Brick Drawing delay
 
 
-;Playerdetails
-Username db 21
-Score db 0
-CurrentLevel db 1
+
+;PLAYER DETAIlS
+Username db 21 dup('$')
+Score db 0  
+currentLevel db 0 
+
 
 
 ;Variables for funtions
@@ -101,10 +103,6 @@ BallVelocRow dw 5 ;Velocity of the ball
 BallVelocCol dw 5
 
 
-;For the pedal
-PedalWidth dw 60
-PedalHeight dw 8
-pedalRow dw 150
 
 ; FOR THE DrawBrick
 BrickHeight db 42
@@ -130,20 +128,16 @@ pedalVelocity dw 10
 
 
 
-;PLAYER DETAIlS
-Username db 21 dup('$')
-Score db 0  
-currentLevel db 0 
-
 
 
 .code
 
 main PROC
+
     mov ax, @data
     mov ds, ax
 
- Mov ah,00h ;set video mode
+    Mov ah,00h ;set video mode
     Mov al,13 ;choose mode 13
     Int 10h  
 
@@ -151,11 +145,11 @@ main PROC
    call ClearScreen
 
 ;	WElcome screen
-	call Screen_Welcome
+	; call Screen_Welcome
 
    ; call DisplayMenu;  ;And Game loop can be called from this menu
 
-   call gameLoop
+    call gameLoop
 
    
     
@@ -194,53 +188,21 @@ gameLoop PROC
 
         call ClearScreen
 
-        ;Do stuff here
-        call moveBall
-        call DrawBall
-        
+         
 
-
-        ; mov ah,2Ch
-        ; int 21h
-
-
-
-        ; cmp dl,TimeTmp2 ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
-        ; je skip1 ;If the time is the same, then we are still in the same second, so we wait
-
-        ; mov TimeTmp2,dl
-        call ClearScreen
-
-
-
-        ;Wait 10 microseconds
-        mov ax, 1680
-        mov cx, 100
-        mov dx, 0
-        int 1Ah
-     
-
-        skip1:
-
-
-        ;Do stuff here
-        call moveBall
-    
-        call DrawBall
-
-
-        call drawAllBalls
         call moveAllBalls
+        call drawAllBalls
 
 
 
         ; call DrawBrick
 
+        ; call moveBall
+        ; call DrawBall
 
 
 
-
-        call DrawPedal
+        ; call DrawPedal
 
         call movePedal
         call DrawPedal
@@ -443,8 +405,8 @@ movePedal PROC uses AX BX CX DX
     mov ah,00h
     int 16h ;Get the key pressed
 
-    cmp ah, 81h
-    je ShowPause
+    ; cmp ah, 81h
+    ; je ShowPause
     cmp ah,04DH ;if ight Arrow
     je movePedalToRight
     cmp ah,04BH ;if Left Arrow
@@ -484,8 +446,8 @@ movePedal PROC uses AX BX CX DX
         mov pedalCol, ax
         ret
 
-    ShowPause:
-    	call Screen_Pause
+    ; ShowPause:
+    ; 	call Screen_Pause
  
 
 
@@ -497,7 +459,7 @@ movePedal ENDP
 
 
 ;Draws the balls
-DrawBall PROC
+DrawBall PROC Uses ax bx dx cx
 ;Input Row Col of the Ball
 ;Input Size of the ball
 
@@ -534,7 +496,7 @@ ret
 DrawBall endp
 
 ;Moves the ball
-moveBall PROC
+moveBall PROC uses ax 
 
     ;Move the ball
     mov ax,BallVelocRow
@@ -545,6 +507,8 @@ moveBall PROC
     ;Check if the ball is out of bounds in the y axis
     mov ax,CANVA_SIZE_ROW
     sub ax,BallSize ;Taking into account the size of the ball
+    sub ax,COLLISION_MARGIN ;Taking into account the margin
+
     cmp BallRow,ax
     jg BallOutOfBoundsR
     cmp BallRow,0
@@ -553,10 +517,68 @@ moveBall PROC
     ;Check if the ball is out of bounds in the x axis
     mov ax,CANVA_SIZE_COL
     sub ax,BallSize ;Taking into account the size of the ball
+    sub ax,COLLISION_MARGIN ;Taking into account the margin
+
     cmp BallCol,ax
     jg BallOutOfBoundsC
     cmp BallCol,0
     jl BallOutOfBoundsC
+
+
+
+    ;Check if the ball is colliding with the pedal Using AABB collision Algorithm 
+    ;Source https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
+    ; rect1.x < rect2.x + rect2.w &&
+    ; rect1.x + rect1.w > rect2.x &&
+    ; rect1.y < rect2.y + rect2.h &&
+    ; rect1.h + rect1.y > rect2.y
+
+    ;All these conditions must be true for a collision to occur
+
+    ; BallCol < pedalCol + PedalWidth &&
+    ; BallCol + BallSize > pedalCol &&
+    ; BallRow < pedalRow + PedalHeight &&
+    ; BallSize + BallRow > pedalRow
+    
+    mov ax,pedalCol
+    add ax,PedalWidth
+    cmp BallCol,ax
+    jnl SkipPedalCollision
+
+    mov ax,BallCol
+    add ax,BallSize
+    cmp pedalCol,ax
+    jnl SkipPedalCollision
+
+    mov ax,pedalRow
+    add ax,PedalHeight
+    cmp BallRow,ax
+    jnl SkipPedalCollision
+
+    mov ax,BallRow
+    add ax,BallSize
+    cmp pedalRow,ax
+    jnl SkipPedalCollision
+
+    ;If no skips means collison occured
+
+    ;Change the direction of the ball
+    NEG BallVelocRow ; Negate the velocity of the ball in the y axis
+    ; add BallCol,3 ;Move the ball in the x axis to avoid the collision
+    ; NEG BallVelocCol ; Negate the velocity of the ball in the x axis
+
+    
+    ;Adding interia to the ball based on if the pedal is moving right or left
+    
+
+
+    ; dec BallRow ;  Move the ball a little bit to the right to avoid the collision 
+
+    ;change ball color JUST FOR FUN
+
+
+
+
 
 
     ret
@@ -569,6 +591,7 @@ moveBall PROC
         neg BallVelocCol
         ret
     
+    SkipPedalCollision:
 
 
 ret
@@ -608,25 +631,11 @@ ClearScreen PROC uses ax bx
 
 
     ;set video mode
-    Mov ah,00h ;set video mode
-    Mov al,13 ;choose mode 13
-    Int 10h
-
-
-;  set video mode
     ; Mov ah,00h ;set video mode
     ; Mov al,13 ;choose mode 13
     ; Int 10h
-  
-    ; ;Set background color
-    ; mov al,00h
-    ; MOV AH,0Bh 		
-    ; MOV BH,00h 		
-    ; MOV BL,00h 		
-    ; INT 10h    	
 
-    ; ; ;Set foreground color 
-    mov al,00h
+ mov al,00h
     MOV AH,0Bh
     MOV BH,00h
     MOV BL,00h
@@ -640,6 +649,34 @@ ClearScreen PROC uses ax bx
     mov dl,80
     mov bh,00010000b
     int 10h
+
+; ;  set video mode
+;     Mov ah,00h ;set video mode
+;     Mov al,13 ;choose mode 13
+;     Int 10h
+  
+    ; ;Set background color
+    ; mov al,00h
+    ; MOV AH,0Bh 		
+    ; MOV BH,00h 		
+    ; MOV BL,00h 		
+    ; INT 10h    	
+
+    ; ; ;Set foreground color 
+    ; mov al,00h
+    ; MOV AH,0Bh
+    ; MOV BH,00h
+    ; MOV BL,00h
+    ; INT 10h
+
+
+;    mov ah,06h
+;     xor al,al
+;     xor cx,cx
+;     mov dh,30
+;     mov dl,80
+;     mov bh,00010000b
+;     int 10h
 
    
 
@@ -973,10 +1010,10 @@ pauseResume:
 pauseExit:
 ;	Exit
 	cmp al, 'E'
-	je exitBelow
+	je exitBelowPause
 	cmp al,'e'
-	je exitBelow
-exitBelow:
+	je exitBelowPause
+exitBelowPause:
 	call Screen_Exit
 
 	ret
