@@ -52,9 +52,9 @@ colGap dw 26
 BricksInCol dw 8
 NBrickRows dw 1
 
-Bricks Brick 8 dup(<,,,,,>)
+Bricks Brick 4 dup(<,,,,,>)
 
-nBricks dw 8
+nBricks dw 4
 nBricksDestroyed dw 0
 
 
@@ -109,6 +109,14 @@ Text_End_Exit db 'Exit(E)','$'			;Exit game button
 
 TimeTmp db 0fh
 TimeTmp2 db 0  ;For Brick Drawing delay
+
+
+
+;FOR ANIMATIONS 
+
+;LEVEL ANIMATION
+LevelText db 'Level:','$'
+LevelTextPress db 'Press any key to continue','$'
 
 
 
@@ -332,12 +340,96 @@ loop loopOuter
 ret
 GenerateLevel endp
 
+
+NextLevelAnimation PROC
+
+
+	AnimationLoop:
+
+	;Wait for a few miliseconds
+
+        xor bx,bx
+        MOV CX, 0
+        mov dx, 0ddeeh
+        ; MOV DX, 9680H
+        mov al,0
+        MOV AH, 86H
+        INT 15H
+
+
+	call clearScreen
+
+	;SET CURSOR TO THE CENTER OF THE SCREEN
+	mov ah,02h
+	mov bh,0
+	mov dh,10
+	mov dl,16
+	int 10h
+
+	; ;PRINT THE LEVEL TEXT
+	mov ah,09h
+	mov dx,offset LevelText
+	int 21h
+
+	
+	;PRINT THE LEVEL NUMBER
+	mov cx,1
+	mov al,currentLevel
+	add al,48
+	mov bh,0
+	mov ah,09h
+	mov bl,4h
+	int 10h
+
+
+	;SET CURSOR TO THE CENTER OF THE SCREEN
+	mov ah,02h
+	mov bh,0
+	mov dh,20
+	mov dl,8
+	int 10h
+
+
+
+	;PRINT THE PRESS ANY KEY TO CONTINUE TEXT
+
+
+
+	mov ah,09h
+	mov dx,offset LevelTextPress
+	int 21h
+
+
+	;WAIT FOR A KEY TO BE PRESSED
+	mov ah,00h
+	int 16h
+
+	jz AnimationLoop
+
+
+
+
+	loop AnimationLoop
+
+
+
+ret
+NextLevelAnimation endp
+
+
+
+
+
+
 ;Makes the new level
 NextLevel PROC uses ax bx cx dx si 
 
 	mov BallCol,50
 	mov BallRow,120
 
+	inc currentLevel
+
+	call NextLevelAnimation
 
 
 	;Resetting the Balls
@@ -353,13 +445,13 @@ NextLevel PROC uses ax bx cx dx si
 
 
 	
-	cmp currentLevel, 0
+	cmp currentLevel, 1
 	je Level1
 
-	cmp currentLevel, 1
+	cmp currentLevel, 2
 	je Level2
 
-	cmp currentLevel, 2
+	cmp currentLevel, 3
 	je Level3
 
 	; cmp currentLevel, 3
@@ -373,14 +465,14 @@ YouWin:
 	int 21h
 
 Level1:
-	mov currentLevel, 1 ;Set the level to 1
+	; mov currentLevel, 1 ;Set the level to 1
 	mov Lives, 3 ;Set the lives to 3
 	mov nBricksDestroyed , 0 ;Set the bricks destroyed to 0
 	call GenerateLevel ;Generate the level
 	ret ;Return
 
 Level2:
-	mov currentLevel, 2 ;Set the level to 2
+	; mov currentLevel, 2 ;Set the level to 2
 	mov Lives, 3 ;Set the lives to 3
 	mov nBricksDestroyed , 0 ;Set the bricks destroyed to 0
 
