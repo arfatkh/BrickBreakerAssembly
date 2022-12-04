@@ -15,7 +15,7 @@ BALL STRUCT
     VelocCol dw 5
 
 BALL ENDS
-Balls BALL <4,,,9,5,5> , <2,,,3,2,2> , <13,,,10,10> ,<4,,,5,6,2> , <2,,,3,2,2> , <1,,,10,10> 
+Balls BALL <1,,,4,5,5> , <2,,,3,2,2> , <13,,,10,10> ,<4,,,5,6,2> , <2,,,3,2,2> , <1,,,10,10> 
 nBalls dw 1 ;Number of balls
 
 
@@ -27,8 +27,7 @@ BRICK STRUCT
     BRow dw 10;
     BCol dw 4
     BColor db 5
-    nHits db 0; Current number of hits
-    nMaxHits db 2; Number of hits to destroy the brick
+    strength db 9; Number of hits to destroy the brick
 
 BRICK ENDS
 
@@ -48,17 +47,17 @@ StartingCol dw 30
 rowGap dw 20
 colGap dw 34
 BricksInCol dw 4
-NBrickRows dw 1
+NBrickRows dw 2
 
-Bricks Brick 16 dup(<,,,,,,>)
-;<,,8,10,4,0,5> , <,,8,45,4,0,5> ,<,,8,80,4,0,5>  , <,,8,10,4,0,5> , <,,8,45,4,0,5> ,<,,8,80,4,0,5> 
-; <,,,10,4,0,5> , <,,,45,4,0,5> ,<,,,80,4,0,5>  , <,,,10,4,0,5> , <,,,45,4,0,5> ,<,,,80,4,0,5> ,
-nBricks dw 4
+Bricks Brick 16 dup(<,,,,,>)
+
+nBricks dw 8
+nBricksDestroyed dw 0
 
 
 CANVA_SIZE_ROW dw 199
 CANVA_SIZE_COL dw 319
-COLLISION_MARGIN dw 10
+COLLISION_MARGIN dw 0
 
 
 ;	File handling Variables
@@ -103,6 +102,7 @@ TimeTmp2 db 0  ;For Brick Drawing delay
 Username db 21 dup('$')
 Score db 0  
 currentLevel db 0 
+Lives dw 3
 
 
 
@@ -130,7 +130,7 @@ BallVelocCol dw 5
 ;For the pedal
 PedalWidth dw 60
 PedalHeight dw 4
-pedalRow dw 170
+pedalRow dw 190
 
 pedalCol dw 50
 pedalColor db 0ffh 
@@ -151,7 +151,6 @@ main PROC
     Mov al,13 ;choose mode 13
     Int 10h  
 
-    call GenerateLevel
 
 
    call ClearScreen
@@ -186,6 +185,7 @@ setCursor ENDP
 ;Basically a loop that runs 100 times a sec
 gameLoop PROC
 
+	call NextLevel ;Starts the game from level 1
 
     StartLoop:
 
@@ -307,6 +307,73 @@ loop loopOuter
 ret
 GenerateLevel endp
 
+;Makes the new level
+NextLevel PROC uses ax bx cx dx si 
+
+	mov BallCol,50
+	mov BallRow,120
+
+
+
+
+	
+	cmp currentLevel, 0
+	je Level1
+
+	cmp currentLevel, 1
+	je Level2
+
+	cmp currentLevel, 2
+	je Level3
+
+	; cmp currentLevel, 3
+	; je Level4
+
+	; cmp currentLevel, 4
+	; je YouWin
+
+YouWin:
+	mov ax, 4c00h
+	int 21h
+
+Level1:
+	mov currentLevel, 1 ;Set the level to 1
+	mov Lives, 3 ;Set the lives to 3
+	mov nBricksDestroyed , 0 ;Set the bricks destroyed to 0
+	call GenerateLevel ;Generate the level
+	ret ;Return
+
+Level2:
+	mov currentLevel, 2 ;Set the level to 2
+	mov Lives, 3 ;Set the lives to 3
+	mov nBricksDestroyed , 0 ;Set the bricks destroyed to 0
+
+	add BallVelocCol,2 ;Increase the velocity of the ball
+	add BallVelocRow,2 ;Increase the velocity of the ball
+	sub PedalWidth, 10 ;Decrease the width of the pedal
+
+	;Increase the brick strength 
+	mov si, offset Bricks
+	mov cx, nBricks
+	LoopIncreaseStrenght:
+		mov [si].strength,2
+		add si, SIZEOF BRICK
+	loop LoopIncreaseStrenght
+
+	call GenerateLevel ;Generate the level
+	
+	ret
+Level3:
+	;close
+	mov ah,4ch
+	int 21h
+
+
+
+
+
+	ret
+NextLevel endp
 
 ;Draws all the balls in the BAlls Array
 drawAllBalls PROC uses si cx ax 
@@ -622,7 +689,7 @@ moveBall PROC uses ax bx cx dx si di
     sub ax,COLLISION_MARGIN ;Taking into account the margin
 
     cmp BallRow,ax
-    jg BallOutOfBoundsR
+    jg BallOutOfBoundsRDown
     cmp BallRow,0
     jl BallOutOfBoundsR
 
@@ -720,12 +787,13 @@ moveBall PROC uses ax bx cx dx si di
         ;Change the direction of the ball
         ; inc BallColor
         inc [di].BColor
-        inc [di].nHits
+        dec [di].strength
         Neg BallVelocRow
         add BallRow,2
 
-        mov al,[di].nHits
-        cmp al,[di].nMaxHits
+    
+		mov ah,0
+        cmp ah,[di].strength ;If the strength is 0 then the brick is destroyed
         jge BrickDestroyed
 
         ; inc [si].BColor  ; Negate the velocity of the ball in the y axis
@@ -734,9 +802,22 @@ moveBall PROC uses ax bx cx dx si di
         ;Things to do when a brick is destroyed
         BrickDestroyed:
     
-        mov [di].BRow,1000
+        mov [di].BRow,6000h ;Move the brick out of the screen
         mov al,[di].BColor ; Because the score depends on the color of the brick
         add Score,al
+		inc nBricksDestroyed ;Increment the number of bricks destroyed
+
+		mov ax,nBricks
+		cmp nBricksDestroyed,ax ;If all the bricks are destroyed
+		jne SkipBrickCollision ;If not all the bricks are destroyed
+
+
+		;If all the bricks are destroyed
+		call NextLevel
+		call WaitForKeypress
+
+
+
 
 
 
@@ -749,6 +830,17 @@ moveBall PROC uses ax bx cx dx si di
     loop LoopBrickCollision
 
 ret
+
+BallOutOfBoundsRDown:
+	;If the ball is out of bounds in the y axis
+	dec Lives
+	;Stop the game
+	; cmp Lives,0
+	; jle GameOver
+	mov ah,4ch
+	int 21h
+
+	ret
 
 BallOutOfBoundsR:
     neg BallVelocRow
@@ -764,6 +856,15 @@ ret
 moveBall endp
 
 
+
+;Waits for a keypress
+WaitForKeypress PROC uses ax
+
+	mov ah,0
+	int 16h
+	ret
+
+WaitForKeypress endp
 
 
 
