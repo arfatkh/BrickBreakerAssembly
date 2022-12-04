@@ -1,63 +1,77 @@
 .model small
-.stack 100h
+.stack 300h
 .data
 
 
 ;/// Structures Definition
 BALL STRUCT 
     ;FOR THE BALL
-    BSize dw 10 ;Size of the ball
-    Row dw 100;
+    BSize dw 8 ;Size of the ball
+    Row dw 150;
     Col dw 50
     Color db 5
 
-    VelocRow dw 5 ;Velocity of the ball
-    VelocCol dw 5
+    VelocRow dw 1 ;Velocity of the ball
+    VelocCol dw 1
 
 BALL ENDS
-Balls BALL <1,,,4,5,5> , <2,,,3,2,2> , <13,,,10,10> ,<4,,,5,6,2> , <2,,,3,2,2> , <1,,,10,10> 
+Balls BALL <,,,4,2,2> , <,,,,2,2> , <,,,3,3> 
+;,<5,,,5,6,2> , <5,,,3,2,2> , <5,,,10,10> 
 nBalls dw 1 ;Number of balls
-
+nBallsLost dw 0 ;Number of balls lost
 
 
 BRICK STRUCT
     ;FOR THE BRICKS
-    BWidth dw 10
-    BHeight dw 5
+    BWidth dw 40
+    BHeight dw 2
     BRow dw 10;
     BCol dw 4
-    BColor db 5
-    strength db 9; Number of hits to destroy the brick
+    BColor db 4
+    strength db 1; Number of hits to destroy the brick
 
 BRICK ENDS
 
 ; FOR THE DrawBrick
-GlobalBrickHeight dw 15
-GlobalBrickWidth dw 30
+; GlobalBrickHeight dw 15
+GlobalBrickHeight dw 10
+GlobalBrickWidth dw 20
+
+; GlobalBrickWidth dw 30
 BrickRow dw 1000;
 BrickCol dw 4000
-BrickColor db 9
-BricknHits db 0; Current number of hits
-BricknMaxHits db 1; Number of hits to destroy the brick
+BrickColor db 4
+
 
 
 ;/// Variables Definition
 StartingRow dw 50
-StartingCol dw 30
-rowGap dw 20
-colGap dw 34
-BricksInCol dw 4
-NBrickRows dw 2
+StartingCol dw 55
+rowGap dw 15
+colGap dw 26
+BricksInCol dw 8
+NBrickRows dw 1
 
-Bricks Brick 16 dup(<,,,,,>)
+Bricks Brick 8 dup(<,,,,,>)
 
 nBricks dw 8
 nBricksDestroyed dw 0
 
 
+
+;FOR COLLSION RECOGNITION AND RESPONSE
+XOverlap dw 0
+YOverlap dw 0
+
+
+
+;TIMER
+Timer dw 21
+
+
 CANVA_SIZE_ROW dw 199
 CANVA_SIZE_COL dw 319
-COLLISION_MARGIN dw 0
+COLLISION_MARGIN dw 10
 
 
 ;	File handling Variables
@@ -118,8 +132,8 @@ BallRow dw 10;
 BallCol dw 4
 BallColor db 4
 
-BallVelocRow dw 5 ;Velocity of the ball
-BallVelocCol dw 5
+BallVelocRow dw 1 ;Velocity of the ball
+BallVelocCol dw 1
 
 
 
@@ -190,14 +204,19 @@ gameLoop PROC
     StartLoop:
 
         ;Get Time using time interrupt
-        ; mov ah,2Ch
-        ; int 21h
+        mov ah,2Ch
+        int 21h
 
-        ; cmp dh,TimeTmp ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
-        ; je StartLoop ;If the time is the same, then we are still in the same second, so we wait
+        cmp dh,TimeTmp ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
+        je SKipTimer ;If the time is the same, then skip the timer
 
-        ; mov TimeTmp,dh
+        mov TimeTmp,dh
+		dec Timer
 
+		SkipTimer:
+
+		; cmp Timer,0 ;If the timer is 0, then the game is over
+		; je TimeOverGameOver
 
 
         call DrawAllBricks
@@ -256,10 +275,13 @@ gameLoop PROC
     ; mov PedalWidth, 50
 
 
-
     jmp StartLoop
 
-
+	TimeOverGameOver:
+		; call GameOver
+		mov ah,4ch
+		int 21h
+		; jmp main
 
 
 
@@ -282,6 +304,9 @@ LoopOuter:
         
             mov [si].BCol,dx
             mov [si].BRow,bx
+			
+			;Setting the color of the brick to a random color
+			; mov [si].BColor,4
 
             add dx,colGap
 
@@ -312,6 +337,17 @@ NextLevel PROC uses ax bx cx dx si
 
 	mov BallCol,50
 	mov BallRow,120
+
+
+
+	;Resetting the Balls
+	mov nBallsLost,0
+	mov nBalls,1
+	mov BallVelocCol,2
+	mov BallVelocRow,2
+	mov BallColor,4
+
+
 
 
 
@@ -348,8 +384,9 @@ Level2:
 	mov Lives, 3 ;Set the lives to 3
 	mov nBricksDestroyed , 0 ;Set the bricks destroyed to 0
 
-	add BallVelocCol,2 ;Increase the velocity of the ball
-	add BallVelocRow,2 ;Increase the velocity of the ball
+	mov si,offset Balls
+	add [si].VelocCol,2 ;Increase the velocity of the ball
+	add [si].VelocRow,2 ;Increase the velocity of the ball
 	sub PedalWidth, 10 ;Decrease the width of the pedal
 
 	;Increase the brick strength 
@@ -423,6 +460,9 @@ moveAllBalls PROC uses ax bx cx dx si
 
         mov ax, [si].VelocCol
         mov BallVelocCol,ax
+
+		mov ax,[si].BSize
+		mov BallSize,ax
 
 
         call moveBall
@@ -582,14 +622,23 @@ movePedal PROC uses AX BX CX DX
     mov ah,00h
     int 16h ;Get the key pressed
 
-    cmp ah, 01h
-    je ShowPause
-    
+
+	; ;if Tab is pressed
+	; cmp ah, 0fh
+	; je increasenBalls
+
+
+
     cmp ah,04DH ;if ight Arrow
     je movePedalToRight
     cmp ah,04BH ;if Left Arrow
     je movePedalToLeft
     
+    cmp ah, 01h ;if ESC
+    je ShowPause
+    
+
+
     ret
 
     movePedalToLeft:
@@ -624,10 +673,14 @@ movePedal PROC uses AX BX CX DX
         mov pedalCol, ax
         ret
 
+	increasenBalls:
+		inc nBalls
+
     ShowPause:
     	call Screen_Pause
  
 
+	
 
     SkipMove:
 
@@ -676,6 +729,49 @@ DrawBall endp
 ;Moves the ball
 moveBall PROC uses ax bx cx dx si di
 
+
+	;SEt the cursor position
+		mov ah,02h
+		mov bh,0
+		mov dl,20
+		mov dh,20
+		int 10h
+
+		;Print the number of balls
+		mov cx,1
+		mov al,byte ptr Timer
+		mov bh,0
+		add al,48
+		mov ah,09h
+		mov bl,4h 
+		int 10h
+
+
+
+		;SEt the cursor position
+		mov ah,02h
+		mov bh,0
+		mov dl,30
+		mov dh,20
+		int 10h
+
+		;Print the number of balls
+		mov cx,1
+		mov al,byte ptr Lives
+		mov bh,0
+		add al,48
+		mov ah,09h
+		mov bl,5h 
+		int 10h
+
+
+
+		
+		
+
+
+
+
     ;Move the ball
     mov ax,BallVelocRow
     add BallRow,ax
@@ -686,7 +782,7 @@ moveBall PROC uses ax bx cx dx si di
     ;Check if the ball is out of bounds in the y axis
     mov ax,CANVA_SIZE_ROW
     sub ax,BallSize ;Taking into account the size of the ball
-    sub ax,COLLISION_MARGIN ;Taking into account the margin
+    ; sub ax,COLLISION_MARGIN ;Taking into account the margin
 
     cmp BallRow,ax
     jg BallOutOfBoundsRDown
@@ -696,7 +792,7 @@ moveBall PROC uses ax bx cx dx si di
     ;Check if the ball is out of bounds in the x axis
     mov ax,CANVA_SIZE_COL
     sub ax,BallSize ;Taking into account the size of the ball
-    sub ax,COLLISION_MARGIN ;Taking into account the margin
+    ; sub ax,COLLISION_MARGIN ;Taking into account the margin
 
     cmp BallCol,ax
     jg BallOutOfBoundsC
@@ -744,7 +840,7 @@ moveBall PROC uses ax bx cx dx si di
     ;Change the direction of the ball
     NEG BallVelocRow ; Negate the velocity of the ball in the y axis
 
-    ret ; return from the procedure
+    jmp StopAllCollsion ; return from the procedure
 
 
     SkipPedalCollision:
@@ -784,39 +880,98 @@ moveBall PROC uses ax bx cx dx si di
 
         ;If no skips means collison occured
 
+
         ;Change the direction of the ball
         ; inc BallColor
         inc [di].BColor
         dec [di].strength
-        Neg BallVelocRow
-        add BallRow,2
 
-    
+
+		;Collision resolution by using overlap method
+		
+		;Calculate the overlap on both axis
+		mov ax, BallCol
+		sub ax, [di].BCol
+		mov bx, GlobalBrickWidth
+		sub bx, BallSize
+		sub bx, ax
+		mov XOverlap, bx
+
+		mov ax, BallRow
+		sub ax, [di].BRow
+		mov bx, GlobalBrickHeight
+		sub bx, BallSize
+		sub bx, ax
+		mov YOverlap, bx
+
+
+		
+
+
+		;Check which axis has the smallest overlap
+		mov ax,YOverlap
+		cmp XOverlap, ax
+		jl XAxisOverlap
+
+		;Y Axis has the smallest overlap
+		;Return the ball to previous position
+			mov ax,BallVelocRow
+			sub BallRow,ax
+			sub BallRow,2 ;To avoid the ball getting stuck in the brick
+
+			mov ax, BallVelocCol
+			sub BallCol,ax
+			sub BallCol,2 ;To avoid the ball getting stuck in the brick
+
+			NEG BallVelocRow ; Negate the velocity of the ball in the y axis
+			
+			jmp DoneOverlap ; return from the procedure
+
+		XAxisOverlap:
+			;X Axis has the smallest overlap
+			;Return the ball to previous position
+			mov ax,BallVelocRow
+			sub BallRow,ax
+			sub BallRow,2 ;To avoid the ball getting stuck in the brick
+
+
+			mov ax, BallVelocCol
+			sub BallCol,ax
+			sub BallCol,2 ;To avoid the ball getting stuck in the brick
+
+
+			NEG BallVelocCol ; Negate the velocity of the ball in the x axis
+			jmp DoneOverlap
+
+
+
+
+		DoneOverlap:
+
+
 		mov ah,0
         cmp ah,[di].strength ;If the strength is 0 then the brick is destroyed
-        jge BrickDestroyed
+        je BrickDestroyed
 
-        ; inc [si].BColor  ; Negate the velocity of the ball in the y axis
-        ret
+		jmp StopAllCollsion ; return from the procedure
 
         ;Things to do when a brick is destroyed
         BrickDestroyed:
-    
-        mov [di].BRow,6000h ;Move the brick out of the screen
-        mov al,[di].BColor ; Because the score depends on the color of the brick
-        add Score,al
-		inc nBricksDestroyed ;Increment the number of bricks destroyed
+			mov [di].BCol,300h ;Move the brick out of the screen
+			mov al,[di].BColor ; Because the score depends on the color of the brick
+			add Score,al
+			inc nBricksDestroyed ;Increment the number of bricks destroyed
 
-		mov ax,nBricks
-		cmp nBricksDestroyed,ax ;If all the bricks are destroyed
-		jne SkipBrickCollision ;If not all the bricks are destroyed
-
-
-		;If all the bricks are destroyed
-		call NextLevel
-		call WaitForKeypress
+			mov ax,nBricks
+			cmp nBricksDestroyed,ax ;If all the bricks are destroyed
+			jne StopAllCollsion ;If not all the bricks are destroyed
 
 
+			;If all the bricks are destroyed
+			call NextLevel
+			call WaitForKeypress
+
+			
 
 
 
@@ -826,35 +981,111 @@ moveBall PROC uses ax bx cx dx si di
 
         add di,SIZEOF Brick ; Move to the next brick
 
+	dec cx
+    jnz LoopBrickCollision
 
-    loop LoopBrickCollision
-
-ret
-
-BallOutOfBoundsRDown:
-	;If the ball is out of bounds in the y axis
-	dec Lives
-	;Stop the game
-	; cmp Lives,0
-	; jle GameOver
-	mov ah,4ch
-	int 21h
 
 	ret
+	BallOutOfBoundsRDown:
+		;If the ball is out of bounds in the y axis
+		inc nBallsLost
 
-BallOutOfBoundsR:
-    neg BallVelocRow
-    ret
+		;IF there is only one ball 
+		mov ax,nBalls
+		cmp ax,1
+		je SkipHideBall
 
-BallOutOfBoundsC:
-    neg BallVelocCol
-    ret
+	
 
-StopAllCollsion:
+
+		;Hiding the ball
+		; mov BallCol,
+		mov BallRow,0
+		mov BallCol,0
+		mov BallColor,4
+		mov BallVelocCol,0
+		mov BallVelocRow,0
+
+
+
+
+		; Check if the player has lost all the balls
+		mov ax,nBallsLost
+		cmp ax,nBalls
+		jne NextBall
+
+		SkipHideBall:
+
+		;If the player has lost all the balls
+		dec Lives
+		call ResetBall;
+
+		;Check if the player has lost all the lives
+		cmp Lives,0
+		jne NextBall
+
+		;If the player has lost all the lives
+		; call GameOver
+		mov ah,4ch
+		int 21h
+
+	
+
+		
+
+		;If the player has lost all the balls
+		ret
+
+		NextBall:
+		
+	
+
+		
+
+
+		ret
+
+	BallOutOfBoundsR:
+		;Return the ball to previous position
+		mov ax,BallVelocRow
+		sub BallRow,ax
+		mov ax, BallVelocCol
+		sub BallCol,ax
+
+		neg BallVelocRow
+
+
+
+
+
+		ret
+
+	BallOutOfBoundsC:
+		;Return the ball to previous position
+		mov ax,BallVelocRow
+		sub BallRow,ax
+		mov ax, BallVelocCol
+		sub BallCol,ax
+		neg BallVelocCol
+		ret
+
+	StopAllCollsion:
 
 ret
 moveBall endp
 
+
+ResetBall PROC
+
+	mov BallCol,100
+	mov BallRow,100
+
+	call DrawBall
+	call WaitForKeypress
+
+
+ret
+ResetBall endp
 
 
 ;Waits for a keypress
