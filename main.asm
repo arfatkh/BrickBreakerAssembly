@@ -2,6 +2,10 @@
 .stack 100h
 .data
 
+;File Writing is breaking Screen_Exit
+;cant print the Score and lives 
+
+
 
 ;/// Structures Definition
 BALL STRUCT 
@@ -45,9 +49,11 @@ COLLISION_MARGIN dw 10
 ;	File handling Variables
 filename db 'Scores.txt',0	;the name of the file
 fhandle dw 	?	;the address to be returned by ax
-buffer dw 100	;100 characters
-
-
+buffer db 100	;100 characters
+Cursor_x db 16
+Cursor_y db 2
+COUNT_multi dw 0
+newbuffer db 100
 
 
 ;	WElcome Screen prompts
@@ -79,13 +85,21 @@ TimeTmp db 0fh
 TimeTmp2 db 0  ;For Brick Drawing delay
 
 
-
 ;PLAYER DETAIlS
 Username db 21 dup('$')
 Score db 0  
 currentLevel db 0 
 
 
+
+;PLAYER DETAIlS
+Username db 12 dup('$')
+newUsername db 12 dup('$')
+Score dw 12
+currentLevel db 2
+Score_str db 4 dup('$')
+Username_COUNT db 0
+lives dw 3
 
 ;Variables for funtions
 DrawPixRow dw 0 ;Row to draw
@@ -142,6 +156,12 @@ main PROC
     Int 10h  
 
 
+
+    call Screen_Welcome
+;	shows the score of the player 
+;	Options for player to go back to main menu or exit game 
+;	setting curser
+
    call ClearScreen
 
 ;	WElcome screen
@@ -152,6 +172,7 @@ main PROC
     call gameLoop
 
    
+
     
     
   
@@ -222,6 +243,12 @@ gameLoop endp
 
 ;Draws all the balls in the BAlls Array
 drawAllBalls PROC uses si cx ax 
+	;mov dh, 2
+	;mov dl, 17
+	;call Display_Score
+	;mov dh, 2
+	;mov dl, 20
+	;call Display_Lives
 
     mov cx,nBalls
     mov si,offset Balls
@@ -691,7 +718,97 @@ ClearScreen PROC uses ax bx
 
 ret
 ClearScreen ENDP
+;****
+;When Score is being written in file
+;Writes the Score in the buffer
+;****
 
+;!!! this aint working!!!
+MultipleDigit_int_to_str PROC
+mov si, offset buffer	
+_OUTP:
+	MOV AX,Score
+	MOV DX,0
+_HERE:
+	CMP AX,0
+	JE _Ex2
+
+	MOV BL,10
+	DIV BL
+
+	MOV DL,AH
+	MOV DH,0
+	PUSH DX
+	MOV CL,AL
+	MOV CH,0
+	MOV AX,CX
+	INC COUNT_multi
+	mov cx, COUNT_multi
+	JMP _HERE
+_Ex2:
+	mov cx, COUNT_multi
+	cmp cx, 0
+	je Multi_END
+	pop dx
+	mov [si], dx
+	inc si
+	dec cx
+	jmp _Ex2
+Multi_END:
+	mov [si],'$'
+	ret
+MultipleDigit_int_to_str ENDP
+;***
+;Used when reading from the file and putting it in Score Variables
+;***
+MultipleDigit_str_to_int PROC
+mov si, offset Score_str
+_INP:
+	mov al, [si]
+	CMP AL,'$'
+	JE _Ex
+	SUB AL,48
+	MOV CL,AL
+	MOV CH,0
+	MOV AX,Score
+	MOV BL,10
+	MUL BL
+	ADD AX,CX
+	MOV Score,AX
+	JMP _INP
+_Ex:
+	ret
+	
+MultipleDigit_str_to_int ENDP
+
+;takes dh and dl as parameters to set the curser
+Display_Score PROC uses dx
+	call setCursor
+	call MultipleDigit_int_to_str
+	mov dx, offset Score_str
+	mov ah, 09h
+	int 21h
+
+	ret
+Display_Score ENDP
+;takes dh and dl as parameters to set the curser	
+Display_Lives PROC
+	call setCursor
+	mov cx, lives
+Lives_loop:
+	mov dl, 03h
+	mov ah, 02h
+	int 21h	
+	loop Lives_loop
+
+	mov dx, lives
+	add dx, 48
+	mov ah, 02h
+	int 21h
+
+
+	ret
+Display_Lives ENDP
 
 ;//////////////////////////////////////////////////////
 ;	Screens Display Functions
@@ -740,6 +857,7 @@ Screen_Welcome PROC near
 
 	ret
 Screen_Welcome ENDP
+
 
 ;	Main Menu and Exit menu fuctions
 
@@ -842,40 +960,40 @@ Screen_Instructions PROC
 instScreen:
 	call ClearScreen
 ;	setting curser
-	mov dh, 2
-	mov dl, 8
+	mov dl, 14
+	mov dh, 3
 	call setCursor
 ;	text prompts
-	lea dx, Text_Instruction_content1
+	lea dx, Text_Instruction_head
 	mov ah, 09h
 	int 21h
 ;	setting curser
-	mov dh, 4
-	mov dl, 2
+	mov dl, 1
+	mov dh, 6
 	call setCursor
 ;	text prompts
 	lea dx, Text_Instruction_content2
 	mov ah, 09h
 	int 21h
 ;	setting curser
-	mov dh, 12
-	mov dl, 2
+	mov dl, 1
+	mov dh, 9
 	call setCursor
 ;	text prompts
 	lea dx, Text_Instruction_content3
 	mov ah, 09h
 	int 21h
 ;	setting curser
-	mov dh, 14
-	mov dl, 2
+	mov dl, 8
+	mov dh, 12
 	call setCursor
 ;	text prompts
 	lea dx, Text_Instruction_content4
 	mov ah, 09h
 	int 21h
 ;	setting curser
-	mov dh, 16
-	mov dl, 10
+	mov dl, 4
+	mov dh, 15
 	call setCursor
 ;	text prompts
 	lea dx, Text_Instruction_content5
@@ -895,61 +1013,273 @@ Screen_Instructions ENDP
 
 Screen_Highscore PROC
 	;reads from the file and prints the player names and their score
+	call ClearScreen
+	
+highScreen:
+	call File_openRW
+
+	;write the Username in the file
+;keep reading the file 
+	call File_read
+	lea dx, buffer
+	mov ah, 09h
+	int 21h
+	call newLine
 
 
+
+;	call MultipleDigit_int_to_str
+;	call AppendToFile
+
+; NOW READING FROM FILE
+;	call File_read
+	mov di, offset newbuffer
+	mov si, offset newUsername
+jumpb0:
+
+	mov ax, [di]
+	mov [si], ax
+	inc si
+	inc di
+	cmp [di], 10d
+	
+	jne jumpb0
+
+	inc di
+	mov ax, [di]
+	mov Score, ax
+
+
+	mov dx, offset newbuffer
+	mov ah, 09h
+	int 21h
+
+	mov [si],'$'
+	inc di
+	call newLine
+	lea dx, Username
+	mov ah, 09h
+	int 21h
+	call newLine
+
+	;mov ax, [di]
+	;sub ax, 48
+	;mov Score, ax
+
+	mov dx, Score
+	add dl, 48
+	mov ah, 02h
+	int 21h
+	call newLine
+	;call File_read
+
+	lea dx, newbuffer
+	mov ah, 09h
+	int 21h
+
+	call File_read
+	lea dx, buffer
+	mov ah, 09h
+	int 21h
+	call newLine
+
+
+
+;	call MultipleDigit_int_to_str
+;	call AppendToFile
+
+; NOW READING FROM FILE
+;	call File_read
+	mov di, offset newbuffer
+	mov si, offset newUsername
+_1jumpb1:
+
+	mov ax, [di]
+	mov [si], ax
+	inc si
+	inc di
+	cmp [di], 10d
+	
+	jne _1jumpb1
+
+	inc di
+	mov ax, [di]
+	mov Score, ax
+
+
+	mov dx, offset newbuffer
+	mov ah, 09h
+	int 21h
+
+	mov [si],'$'
+	inc di
+	call newLine
+	lea dx, Username
+	mov ah, 09h
+	int 21h
+	call newLine
+
+	;mov ax, [di]
+	;sub ax, 48
+	;mov Score, ax
+
+	mov dx, Score
+	add dl, 48
+	mov ah, 02h
+	int 21h
+	call newLine
+	;call File_read
+
+	lea dx, newbuffer
+	mov ah, 09h
+	int 21h
+		call File_read
+	lea dx, buffer
+	mov ah, 09h
+	int 21h
+	call newLine
+
+
+
+;	call MultipleDigit_int_to_str
+;	call AppendToFile
+
+; NOW READING FROM FILE
+;	call File_read
+	mov di, offset newbuffer
+	mov si, offset newUsername
+_2jumpb2:
+
+	mov ax, [di]
+	mov [si], ax
+	inc si
+	inc di
+	cmp [di], 10d
+	
+	jne _2jumpb2
+
+	inc di
+	mov ax, [di]
+	mov Score, ax
+
+
+	mov dx, offset newbuffer
+	mov ah, 09h
+	int 21h
+
+	mov [si],'$'
+	inc di
+	call newLine
+	lea dx, Username
+	mov ah, 09h
+	int 21h
+	call newLine
+
+	;mov ax, [di]
+	;sub ax, 48
+	;mov Score, ax
+
+	mov dx, Score
+	add dl, 48
+	mov ah, 02h
+	int 21h
+	call newLine
+	;call File_read
+
+	lea dx, newbuffer
+	mov ah, 09h
+	int 21h
+		call File_read
+	lea dx, buffer
+	mov ah, 09h
+	int 21h
+	call newLine
+
+
+	call File_close	
+
+	;call File_close	
+endoffile:
+	mov ah, 00h
+	int 16H
+	cmp al, 'E'
+	je belowHigh
+	cmp al, 'e'
+	je belowHigh
+	jmp highScreen
+belowHigh:
 	ret
 Screen_Highscore ENDP
 
 ;//////////////////////////////////////////////////////
 ;//////////////////////////////////////////////////////
+
 Screen_Exit PROC
 	;after the game is finished
 	call ClearScreen
 ; open the file and write the details of the player
-	call File_open
-	;call File_openExisting
-; inserting the player details in buffer Variables
-	mov si, 0
-	mov cx, 0
-	lea di, Username
-write_again:
-	mov ax, [di]
-	cmp ax, 0
-	je write_exit
-	mov ax, [di]
-	mov buffer[si], ax
-	inc si
-	inc cx
-	inc di
-	jmp write_again
-write_exit:
-	
-	mov ax, word PTR Score
-	mov buffer[si],ax	
-	inc si
-	inc cx
-	mov buffer[si], 32
-	inc si
-	inc cx
-	mov ax, word PTR CurrentLevel
-	mov buffer[si], ax
+	;call File_open
+	   call File_openRW
+    ; call File_read
+    ; call WriteToFile
+    lea si, Username
+	lea di, buffer
 
-	call File_write
+jumpb1:
+
+	mov ax, [si]
+	mov [di], ax
+	inc si
+	inc di
+
+	cmp [si], '$'
+	jne jumpb1
+
+	mov [di], 32d
+	inc di
+;	Multidigit variable code
+	mov ax, Score
+	mov dx, 0
+jumpb2:	
+	cmp ax, 0
+	je exx_1
+
+	mov bl, 10
+	div bx
+
+
+	
+	mov bx, ax
+	mov [di], bx 	;tenth unit
+	inc di
+	add dl, 48
+	mov [di], dl 	;unit
+	inc di
+exx_1:
+	mov [di],'$'
+	inc di
+	mov [di], 10d
+	
+;THis not working
+	;call MultipleDigit_int_to_str
+
+	call File_write_append
 
 	call File_close 
+
 ;	shows the score of the player 
 ;	Options for player to go back to main menu or exit game 
 ;	setting curser
-	mov dh, 14	;row
-	mov dl, 6	;cols
+	mov dh, 10	;row
+	mov dl, 14	;cols
 	call setCursor
 ;	text prompts
 	lea dx, Text_End_MainMenu
 	mov ah, 09h
 	int 21h
 ;	setting curser
-	mov dh, 16	;row
-	mov dl, 8	;cols
+	mov dh, 14	;row
+	mov dl, 17	;cols
 	call setCursor
 ;	text prompts
 	lea dx, Text_End_Exit
@@ -981,16 +1311,16 @@ Screen_Exit ENDP
 
 ;	Pause Screen when the game is running
 Screen_Pause PROC
-	mov dh, 14	;row
-	mov dl, 6	;cols
+	mov dh, 10	;row
+	mov dl, 14	;cols
 	call setCursor
 ;	text Resume
 	lea dx, Text_Pause_Resume
 	mov ah, 09h
 	int 21h
 ;	setting curser
-	mov dh, 16	;row
-	mov dl, 8	;cols
+	mov dh, 14	;row
+	mov dl, 15	;cols
 	call setCursor
 
 	;exit button
@@ -1035,16 +1365,39 @@ File_open PROC
 	ret
 File_open ENDP
 
-File_openExisting PROC
+File_openRW PROC
+
+	mov ah, 3dh
+	mov al, 2
+	mov dx, offset filename
+	int 21h
+	mov fhandle, ax
+	
+	ret
+
+File_openRW ENDP
+
+File_openExisting_read PROC
 	
 	mov ah, 3dh
 	lea dx, filename
-	mov al, 2
+	mov al, 0
 	int 21h
 	mov fhandle, ax
 
 	ret
-File_openExisting ENDP
+File_openExisting_read ENDP
+
+File_openExisting_write PROC
+	
+	mov ah, 3dh
+	lea dx, filename
+	mov al, 1
+	int 21h
+	mov fhandle, ax
+
+	ret
+File_openExisting_write ENDP
 
 File_close PROC
 	
@@ -1055,21 +1408,79 @@ File_close PROC
 	ret
 File_close ENDP
 
-File_write PROC uses cx
-	
+File_write PROC uses ax bx cx dx
+
+	mov cx, 0
+	mov dx, 0
+
+	mov ah, 42h
+	mov al, 2
+	int 21h
+
 	mov ah, 40h
 	mov bx, fhandle
-	lea dx, buffer
-	;mov cx,		;number of characters
+	mov cx, 12		;length of what you want to write
+
+	mov dx, offset buffer
 	int 21h
 
 	ret
+
 File_write ENDP
 
-File_read PROC
+File_write_append PROC uses cx
+	
+	 mov cx,0
+    mov dx, 0
+
+    mov bx, fhandle
 
 
+    mov ah,42h
+    mov al,2
+    int 21h
+
+    mov ah, 40h ; service to write to a file
+    mov cx, 25
+
+    mov dx, offset buffer
+    int 21h
+
+	ret
+File_write_append ENDP
+
+File_read PROC uses dx cx ax	
+	
+	mov ah, 3fh
+	mov bx, fhandle
+	mov cx, 25	;characters/bytes to read
+	lea dx, buffer
+	;mov al,0
+	int 21h
 
 	ret
 File_read ENDP
+
+;Procedure to display a new line 
+newLine proc
+;Input Nothing
+;Output Nothing
+;Displays a new line on screen
+
+    ;Printing new line
+    push dx
+
+    mov dl, 10
+    mov ah, 02h
+    int 21h
+    mov dl, 13
+    mov ah, 02h
+    int 21h
+
+    pop dx
+
+    ret
+newLine endp
+
+
 end main
