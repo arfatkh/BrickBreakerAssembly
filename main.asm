@@ -85,6 +85,12 @@ TimeTmp db 0fh
 TimeTmp2 db 0  ;For Brick Drawing delay
 
 
+;PLAYER DETAIlS
+Username db 21 dup('$')
+Score db 0  
+currentLevel db 0 
+
+
 
 ;PLAYER DETAIlS
 Username db 12 dup('$')
@@ -150,10 +156,23 @@ main PROC
     Int 10h  
 
 
+
     call Screen_Welcome
 ;	shows the score of the player 
 ;	Options for player to go back to main menu or exit game 
 ;	setting curser
+
+   call ClearScreen
+
+;	WElcome screen
+	; call Screen_Welcome
+
+   ; call DisplayMenu;  ;And Game loop can be called from this menu
+
+    call gameLoop
+
+   
+
     
     
   
