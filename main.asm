@@ -1,5 +1,5 @@
 .model small
-.stack 100h
+.stack 300h
 .data
 
 ;File Writing is breaking Screen_Exit
@@ -10,35 +10,67 @@
 ;/// Structures Definition
 BALL STRUCT 
     ;FOR THE BALL
-    BSize dw 10 ;Size of the ball
-    Row dw 10;
-    Col dw 4
+    BSize dw 8 ;Size of the ball
+    Row dw 150;
+    Col dw 50
     Color db 5
 
-    VelocRow dw 5 ;Velocity of the ball
-    VelocCol dw 5
+    VelocRow dw 1 ;Velocity of the ball
+    VelocCol dw 1
 
 BALL ENDS
+Balls BALL <,,,4,2,2> , <,,,,2,2> , <,,,3,3> 
+;,<5,,,5,6,2> , <5,,,3,2,2> , <5,,,10,10> 
+nBalls dw 1 ;Number of balls
+nBallsLost dw 0 ;Number of balls lost
 
 
 BRICK STRUCT
     ;FOR THE BRICKS
-    BWidth dw 10
-    BHeight dw 5
+    BWidth dw 40
+    BHeight dw 2
     BRow dw 10;
     BCol dw 4
-    BColor db 5
-    nHits db 0; Current number of hits
-    nMaxHits db 2; Number of hits to destroy the brick
+    BColor db 4
+    strength db 1; Number of hits to destroy the brick
 
 BRICK ENDS
 
+; FOR THE DrawBrick
+; GlobalBrickHeight dw 15
+GlobalBrickHeight dw 10
+GlobalBrickWidth dw 20
+
+; GlobalBrickWidth dw 30
+BrickRow dw 1000;
+BrickCol dw 4000
+BrickColor db 4
 
 
 
-Balls BALL <4,10,4,5,6,2> , <2,90,4,3,2,2> , <13,7,30,10,10> ,<4,10,4,5,6,2> , <2,90,4,3,2,2> , <1,4,90,10,10> 
-nBalls dw 3 ;Number of balls
+;/// Variables Definition
+StartingRow dw 50
+StartingCol dw 55
+rowGap dw 15
+colGap dw 26
+BricksInCol dw 8
+NBrickRows dw 1
 
+Bricks Brick 4 dup(<,,,,,>)
+
+nBricks dw 4
+nBricksDestroyed dw 0
+
+
+
+;FOR COLLSION RECOGNITION AND RESPONSE
+XOverlap dw 0
+YOverlap dw 0
+
+
+
+;TIMER
+Timer dw 21
 
 
 CANVA_SIZE_ROW dw 199
@@ -85,10 +117,14 @@ TimeTmp db 0fh
 TimeTmp2 db 0  ;For Brick Drawing delay
 
 
-;PLAYER DETAIlS
-Username db 21 dup('$')
-Score db 0  
-currentLevel db 0 
+
+;FOR ANIMATIONS 
+
+;LEVEL ANIMATION
+LevelText db 'Level:','$'
+LevelTextPress db 'Press any key to continue','$'
+
+
 
 
 
@@ -113,32 +149,23 @@ BallRow dw 10;
 BallCol dw 4
 BallColor db 4
 
-BallVelocRow dw 5 ;Velocity of the ball
-BallVelocCol dw 5
+BallVelocRow dw 1 ;Velocity of the ball
+BallVelocCol dw 1
 
 
-
-; FOR THE DrawBrick
-BrickHeight db 42
-BrickWidth db 4
-BrickRow db 10;
-BrickCol db 4
-BrickColor db 5
-BricknHits db 0; Current number of hits
-BricknMaxHits db 1; Number of hits to destroy the brick
 
 
 
 
 
 ;For the pedal
-PedalWidth dw 30
+PedalWidth dw 60
 PedalHeight dw 4
-pedalRow dw 170
+pedalRow dw 190
 
 pedalCol dw 50
 pedalColor db 0ffh 
-pedalVelocity dw 10
+pedalVelocity dw 30
 
 
 
@@ -157,12 +184,12 @@ main PROC
 
 
 
+
     call Screen_Welcome
 ;	shows the score of the player 
 ;	Options for player to go back to main menu or exit game 
 ;	setting curser
 
-   call ClearScreen
 
 ;	WElcome screen
 	; call Screen_Welcome
@@ -195,51 +222,302 @@ setCursor ENDP
 ;Basically a loop that runs 100 times a sec
 gameLoop PROC
 
+	call NextLevel ;Starts the game from level 1
 
     StartLoop:
+
         ;Get Time using time interrupt
         mov ah,2Ch
         int 21h
 
-        cmp dl,TimeTmp ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
-        je StartLoop ;If the time is the same, then we are still in the same second, so we wait
+        cmp dh,TimeTmp ;DL has the current Time Sec/100 (0-99) . And TimeTmp has the last time
+        je SKipTimer ;If the time is the same, then skip the timer
 
-        mov TimeTmp,dl
-       
+        mov TimeTmp,dh
+		dec Timer
 
-        call ClearScreen
+		SkipTimer:
 
-         
+		; cmp Timer,0 ;If the timer is 0, then the game is over
+		; je TimeOverGameOver
+
+
+        call DrawAllBricks
+
+
 
         call moveAllBalls
         call drawAllBalls
 
 
 
-        ; call DrawBrick
+        
+        call movePedal
+        call DrawPedal
 
-        ; call moveBall
-        ; call DrawBall
+     
+        xor bx,bx
+        MOV CX, 0
+        mov dx, 0ddeeh
+        ; MOV DX, 9680H
+        mov al,0
+        MOV AH, 86H
+        INT 15H
 
+
+
+        ; call drawAllBalls
 
 
         ; call DrawPedal
+        ; call DrawAllBricks
+  
+        ; call DrawBrick
 
         call movePedal
         call DrawPedal
 
+        call moveAllBalls
+        call drawAllBalls
+
+        call ClearScreen
+
+    
+
+ 
+        ; call ;    call DrawAllBricks
+
+        ; call DrawPedal
+        ; cmp Score, 9
+        ; jge Level2
+
+        ; jmp StartLoop
+
+    ; Level2:
+    ; inc pedalColor
+    ; mov PedalWidth, 50
 
 
     jmp StartLoop
 
-
+	TimeOverGameOver:
+		; call GameOver
+		mov ah,4ch
+		int 21h
+		; jmp main
 
 
 
 ret
 gameLoop endp
 
+GenerateLevel PROC uses si cx ax dx
 
+mov si , offset Bricks
+
+
+mov cx , NBrickRows
+mov bx , StartingRow
+LoopOuter:
+    push cx
+
+    mov dx , StartingCol
+    mov cx , BricksInCol
+    GenerateLevelLoop:
+        
+            mov [si].BCol,dx
+            mov [si].BRow,bx
+			
+			;Setting the color of the brick to a random color
+			; mov [si].BColor,4
+
+            add dx,colGap
+
+
+        
+        add si , SIZEOF BRICK
+    loop GenerateLevelLoop
+            
+    add bx,rowGap
+
+
+
+
+    pop cx
+loop loopOuter
+
+
+
+
+
+
+
+ret
+GenerateLevel endp
+
+
+NextLevelAnimation PROC
+
+
+	AnimationLoop:
+
+	;Wait for a few miliseconds
+
+        xor bx,bx
+        MOV CX, 0
+        mov dx, 0ddeeh
+        ; MOV DX, 9680H
+        mov al,0
+        MOV AH, 86H
+        INT 15H
+
+
+	call clearScreen
+
+	;SET CURSOR TO THE CENTER OF THE SCREEN
+	mov ah,02h
+	mov bh,0
+	mov dh,10
+	mov dl,16
+	int 10h
+
+	; ;PRINT THE LEVEL TEXT
+	mov ah,09h
+	mov dx,offset LevelText
+	int 21h
+
+	
+	;PRINT THE LEVEL NUMBER
+	mov cx,1
+	mov al,currentLevel
+	add al,48
+	mov bh,0
+	mov ah,09h
+	mov bl,4h
+	int 10h
+
+
+	;SET CURSOR TO THE CENTER OF THE SCREEN
+	mov ah,02h
+	mov bh,0
+	mov dh,20
+	mov dl,8
+	int 10h
+
+
+
+	;PRINT THE PRESS ANY KEY TO CONTINUE TEXT
+
+
+
+	mov ah,09h
+	mov dx,offset LevelTextPress
+	int 21h
+
+
+	;WAIT FOR A KEY TO BE PRESSED
+	mov ah,00h
+	int 16h
+
+	jz AnimationLoop
+
+
+
+
+	loop AnimationLoop
+
+
+
+ret
+NextLevelAnimation endp
+
+
+
+
+
+
+;Makes the new level
+NextLevel PROC uses ax bx cx dx si 
+
+	mov BallCol,50
+	mov BallRow,120
+
+	inc currentLevel
+
+	call NextLevelAnimation
+
+
+	;Resetting the Balls
+	mov nBallsLost,0
+	mov nBalls,1
+	mov BallVelocCol,2
+	mov BallVelocRow,2
+	mov BallColor,4
+
+
+
+
+
+
+	
+	cmp currentLevel, 1
+	je Level1
+
+	cmp currentLevel, 2
+	je Level2
+
+	cmp currentLevel, 3
+	je Level3
+
+	; cmp currentLevel, 3
+	; je Level4
+
+	; cmp currentLevel, 4
+	; je YouWin
+
+YouWin:
+	mov ax, 4c00h
+	int 21h
+
+Level1:
+	; mov currentLevel, 1 ;Set the level to 1
+	mov Lives, 3 ;Set the lives to 3
+	mov nBricksDestroyed , 0 ;Set the bricks destroyed to 0
+	call GenerateLevel ;Generate the level
+	ret ;Return
+
+Level2:
+	; mov currentLevel, 2 ;Set the level to 2
+	mov Lives, 3 ;Set the lives to 3
+	mov nBricksDestroyed , 0 ;Set the bricks destroyed to 0
+
+	mov si,offset Balls
+	add [si].VelocCol,2 ;Increase the velocity of the ball
+	add [si].VelocRow,2 ;Increase the velocity of the ball
+	sub PedalWidth, 10 ;Decrease the width of the pedal
+
+	;Increase the brick strength 
+	mov si, offset Bricks
+	mov cx, nBricks
+	LoopIncreaseStrenght:
+		mov [si].strength,2
+		add si, SIZEOF BRICK
+	loop LoopIncreaseStrenght
+
+	call GenerateLevel ;Generate the level
+	
+	ret
+Level3:
+	;close
+	mov ah,4ch
+	int 21h
+
+
+
+
+
+	ret
+NextLevel endp
 
 ;Draws all the balls in the BAlls Array
 drawAllBalls PROC uses si cx ax 
@@ -274,12 +552,13 @@ drawAllBalls PROC uses si cx ax
 ret
 drawAllBalls ENDP
 ;Moves all the balls in the Balls Array
-moveAllBalls PROC uses si cx ax 
+moveAllBalls PROC uses ax bx cx dx si
 
     mov cx,nBalls
     mov si,offset Balls
 
     LoopMove:
+
         mov ax, [si].Row
         mov BallRow,ax
 
@@ -294,6 +573,9 @@ moveAllBalls PROC uses si cx ax
 
         mov ax, [si].VelocCol
         mov BallVelocCol,ax
+
+		mov ax,[si].BSize
+		mov BallSize,ax
 
 
         call moveBall
@@ -327,52 +609,44 @@ moveAllBalls ENDP
 
 
 ;Draw Brick [For single brick]
-DrawBrick PROC uses si cx ax bx
+DrawBrick PROC uses si cx ax bx dx
+;BrickCol ==> bx
+;BrickRow ==> dx
+;BrickColor ==> al
 
- ; X-Y coordinates of the ball
-    ; mov ax, BrickCol
+
+;---------------
+; IF YOU WANT TO USE VARIABLES
+;---------------
+
+;  X-Y coordinates of the ball
+    mov bx, BrickCol
     ; mov DrawPixCol,ax
-    ; mov ax, BrickRow
+    mov dx, BrickRow
     ; mov DrawPixRow,ax
-    ; mov al, BrickColor
+    mov al, BrickColor
     ; mov DrawPixColor,al
 
-    ; mov cx,BrickHeight  ;
-    ; LoopPrintRowBrick:  ;Runs for each row
-    ;     push cx ;save cx
-    ;     push word ptr DrawPixCol ; save DrawPixCol
+    mov cx,GlobalBrickHeight  ;
+    LoopPrintRowBrick:  ;Runs for each row
+        push cx ;save cx
+        push bx ; save DrawPixCol
 
-    ;     mov cx,BrickWidth
-    ;     LoopPrintColBrick:  ;Runs for each column
-    ;         call DrawPixel
-    ;         inc DrawPixCol
-    ;     loop LoopPrintColBrick
+        mov cx,GlobalBrickWidth
+        LoopPrintColBrick:  ;Runs for each column
+            push cx
+            mov cx,bx
+            call DrawPixelFast
+            inc bx
+            pop cx
+        loop LoopPrintColBrick
 
-    ;     inc DrawPixRow ;increment row
+        inc dx ;increment row
 
-    ;     pop word ptr DrawPixCol ; restore DrawPixCol
-    ;     pop cx
+        pop bx ; restore DrawPixCol
+        pop cx
 
-    ; loop LoopPrintRowBrick
-
-
-    mov ah, 6
-
-    mov al, BrickHeight
-    mov bh, 4
-
-    mov ch, BrickRow  ;Top Row
-    mov cl, BrickCol  ;Left Column
-
-
-    mov dh,ch   ;Bottom Row
-    add dh,BrickHeight
-
-
-    mov dl, BrickCol  ;Right Column
-    add dl,BrickWidth ;
-
-    int 10h
+    loop LoopPrintRowBrick
 
 
 
@@ -380,6 +654,35 @@ DrawBrick PROC uses si cx ax bx
 
 ret
 DrawBrick ENDP
+
+
+;Draw all bricks
+DrawAllBricks PROC uses si cx ax bx
+
+    mov cx,nBricks
+    mov si,offset Bricks
+
+    LoopDrawBrick:
+       
+        mov ax, [si].BRow
+        mov BrickRow,ax
+
+        mov ax, [si].BCol
+        mov BrickCol,ax
+
+        mov al, [si].BColor
+        mov BrickColor,al
+
+        call DrawBrick
+
+        add si,SIZEOF BRICK
+        
+    loop LoopDrawBrick
+
+    ret
+
+DrawAllBricks ENDP
+
 
 ;Draws the pedal
 DrawPedal PROC uses AX BX CX DX
@@ -432,14 +735,23 @@ movePedal PROC uses AX BX CX DX
     mov ah,00h
     int 16h ;Get the key pressed
 
-    cmp ah, 01h
-    je ShowPause
-    
+
+	; ;if Tab is pressed
+	; cmp ah, 0fh
+	; je increasenBalls
+
+
+
     cmp ah,04DH ;if ight Arrow
     je movePedalToRight
     cmp ah,04BH ;if Left Arrow
     je movePedalToLeft
     
+    cmp ah, 01h ;if ESC
+    je ShowPause
+    
+
+
     ret
 
     movePedalToLeft:
@@ -474,10 +786,14 @@ movePedal PROC uses AX BX CX DX
         mov pedalCol, ax
         ret
 
+	increasenBalls:
+		inc nBalls
+
     ShowPause:
     	call Screen_Pause
  
 
+	
 
     SkipMove:
 
@@ -524,7 +840,50 @@ ret
 DrawBall endp
 
 ;Moves the ball
-moveBall PROC uses ax 
+moveBall PROC uses ax bx cx dx si di
+
+
+	;SEt the cursor position
+		mov ah,02h
+		mov bh,0
+		mov dl,20
+		mov dh,20
+		int 10h
+
+		;Print the number of balls
+		mov cx,1
+		mov al,byte ptr Timer
+		mov bh,0
+		add al,48
+		mov ah,09h
+		mov bl,4h 
+		int 10h
+
+
+
+		;SEt the cursor position
+		mov ah,02h
+		mov bh,0
+		mov dl,30
+		mov dh,20
+		int 10h
+
+		;Print the number of balls
+		mov cx,1
+		mov al,byte ptr Lives
+		mov bh,0
+		add al,48
+		mov ah,09h
+		mov bl,5h 
+		int 10h
+
+
+
+		
+		
+
+
+
 
     ;Move the ball
     mov ax,BallVelocRow
@@ -532,20 +891,21 @@ moveBall PROC uses ax
     mov ax,BallVelocCol
     add BallCol,ax
 
+
     ;Check if the ball is out of bounds in the y axis
     mov ax,CANVA_SIZE_ROW
     sub ax,BallSize ;Taking into account the size of the ball
-    sub ax,COLLISION_MARGIN ;Taking into account the margin
+    ; sub ax,COLLISION_MARGIN ;Taking into account the margin
 
     cmp BallRow,ax
-    jg BallOutOfBoundsR
+    jg BallOutOfBoundsRDown
     cmp BallRow,0
     jl BallOutOfBoundsR
 
     ;Check if the ball is out of bounds in the x axis
     mov ax,CANVA_SIZE_COL
     sub ax,BallSize ;Taking into account the size of the ball
-    sub ax,COLLISION_MARGIN ;Taking into account the margin
+    ; sub ax,COLLISION_MARGIN ;Taking into account the margin
 
     cmp BallCol,ax
     jg BallOutOfBoundsC
@@ -592,39 +952,266 @@ moveBall PROC uses ax
 
     ;Change the direction of the ball
     NEG BallVelocRow ; Negate the velocity of the ball in the y axis
-    ; add BallCol,3 ;Move the ball in the x axis to avoid the collision
-    ; NEG BallVelocCol ; Negate the velocity of the ball in the x axis
 
-    
-    ;Adding interia to the ball based on if the pedal is moving right or left
-    
+    jmp StopAllCollsion ; return from the procedure
 
 
-    ; dec BallRow ;  Move the ball a little bit to the right to avoid the collision 
-
-    ;change ball color JUST FOR FUN
-
-
-
-
-
-
-    ret
-
-    BallOutOfBoundsR:
-        neg BallVelocRow
-        ret
-
-    BallOutOfBoundsC:
-        neg BallVelocCol
-        ret
-    
     SkipPedalCollision:
+   ;Checking brick collisons
+    mov di,offset Bricks 
+    mov cx,nBricks
+
+   LoopBrickCollision:
+
+         ;All these conditions must be true for a collision to occur
+
+        ; BallCol < BrickCol + BrickWidth &&
+        ; BallCol + BallSize > BrickCol &&
+        ; BallRow < BrickRow + GlobalBrickHeight &&
+        ; BallSize + BallRow > BrickRow
+
+        mov ax, [di].BCol
+        add ax, GlobalBrickWidth
+        cmp BallCol,ax
+        jnl SkipBrickCollision
+
+        mov ax,BallCol 
+        add ax,BallSize
+        cmp [di].BCol,ax
+        jnl SkipBrickCollision
+
+        mov ax,[di].BRow
+        add ax,GlobalBrickHeight
+        cmp BallRow,ax
+        jnl SkipBrickCollision
+
+
+        mov ax,BallRow
+        add ax,BallSize
+        cmp [di].BRow,ax
+        jnl SkipBrickCollision
+
+        ;If no skips means collison occured
+
+
+        ;Change the direction of the ball
+        ; inc BallColor
+        inc [di].BColor
+        dec [di].strength
+
+
+		;Collision resolution by using overlap method
+		
+		;Calculate the overlap on both axis
+		mov ax, BallCol
+		sub ax, [di].BCol
+		mov bx, GlobalBrickWidth
+		sub bx, BallSize
+		sub bx, ax
+		mov XOverlap, bx
+
+		mov ax, BallRow
+		sub ax, [di].BRow
+		mov bx, GlobalBrickHeight
+		sub bx, BallSize
+		sub bx, ax
+		mov YOverlap, bx
+
+
+		
+
+
+		;Check which axis has the smallest overlap
+		mov ax,YOverlap
+		cmp XOverlap, ax
+		jl XAxisOverlap
+
+		;Y Axis has the smallest overlap
+		;Return the ball to previous position
+			mov ax,BallVelocRow
+			sub BallRow,ax
+			sub BallRow,2 ;To avoid the ball getting stuck in the brick
+
+			mov ax, BallVelocCol
+			sub BallCol,ax
+			sub BallCol,2 ;To avoid the ball getting stuck in the brick
+
+			NEG BallVelocRow ; Negate the velocity of the ball in the y axis
+			
+			jmp DoneOverlap ; return from the procedure
+
+		XAxisOverlap:
+			;X Axis has the smallest overlap
+			;Return the ball to previous position
+			mov ax,BallVelocRow
+			sub BallRow,ax
+			sub BallRow,2 ;To avoid the ball getting stuck in the brick
+
+
+			mov ax, BallVelocCol
+			sub BallCol,ax
+			sub BallCol,2 ;To avoid the ball getting stuck in the brick
+
+
+			NEG BallVelocCol ; Negate the velocity of the ball in the x axis
+			jmp DoneOverlap
+
+
+
+
+		DoneOverlap:
+
+
+		mov ah,0
+        cmp ah,[di].strength ;If the strength is 0 then the brick is destroyed
+        je BrickDestroyed
+
+		jmp StopAllCollsion ; return from the procedure
+
+        ;Things to do when a brick is destroyed
+        BrickDestroyed:
+			mov [di].BCol,300h ;Move the brick out of the screen
+			mov al,[di].BColor ; Because the score depends on the color of the brick
+			add Score,al
+			inc nBricksDestroyed ;Increment the number of bricks destroyed
+
+			mov ax,nBricks
+			cmp nBricksDestroyed,ax ;If all the bricks are destroyed
+			jne StopAllCollsion ;If not all the bricks are destroyed
+
+
+			;If all the bricks are destroyed
+			call NextLevel
+			call WaitForKeypress
+
+			
+
+
+
+
+
+        SkipBrickCollision:
+
+        add di,SIZEOF Brick ; Move to the next brick
+
+	dec cx
+    jnz LoopBrickCollision
+
+
+	ret
+	BallOutOfBoundsRDown:
+		;If the ball is out of bounds in the y axis
+		inc nBallsLost
+
+		;IF there is only one ball 
+		mov ax,nBalls
+		cmp ax,1
+		je SkipHideBall
+
+	
+
+
+		;Hiding the ball
+		; mov BallCol,
+		mov BallRow,0
+		mov BallCol,0
+		mov BallColor,4
+		mov BallVelocCol,0
+		mov BallVelocRow,0
+
+
+
+
+		; Check if the player has lost all the balls
+		mov ax,nBallsLost
+		cmp ax,nBalls
+		jne NextBall
+
+		SkipHideBall:
+
+		;If the player has lost all the balls
+		dec Lives
+		call ResetBall;
+
+		;Check if the player has lost all the lives
+		cmp Lives,0
+		jne NextBall
+
+		;If the player has lost all the lives
+		; call GameOver
+		mov ah,4ch
+		int 21h
+
+	
+
+		
+
+		;If the player has lost all the balls
+		ret
+
+		NextBall:
+		
+	
+
+		
+
+
+		ret
+
+	BallOutOfBoundsR:
+		;Return the ball to previous position
+		mov ax,BallVelocRow
+		sub BallRow,ax
+		mov ax, BallVelocCol
+		sub BallCol,ax
+
+		neg BallVelocRow
+
+
+
+
+
+		ret
+
+	BallOutOfBoundsC:
+		;Return the ball to previous position
+		mov ax,BallVelocRow
+		sub BallRow,ax
+		mov ax, BallVelocCol
+		sub BallCol,ax
+		neg BallVelocCol
+		ret
+
+	StopAllCollsion:
+
+ret
+moveBall endp
+
+
+ResetBall PROC
+
+	mov BallCol,100
+	mov BallRow,100
+
+	call DrawBall
+	call WaitForKeypress
 
 
 ret
+ResetBall endp
 
-moveBall endp
+
+;Waits for a keypress
+WaitForKeypress PROC uses ax
+
+	mov ah,0
+	int 16h
+	ret
+
+WaitForKeypress endp
+
+
+
 ;Draws a pixel at the specified row and column
 DrawPixel PROC uses ax bx cx dx
 ;Input: DrawPixRow, DrawPixRowCol, DrawPixColor
@@ -642,6 +1229,26 @@ DrawPixel PROC uses ax bx cx dx
 
 DrawPixel endp
 
+
+;Draws a pixel at the specified row and column
+DrawPixelFast PROC uses ax 
+;Input:
+;DrawPixRow ==> DX
+;DrawPixCol; ==> CX
+;DrawPixColor ==> AL
+
+
+    MOV AH, 0Ch
+    INT 10H
+
+  
+
+    ret
+
+DrawPixelFast endp
+
+
+
 ; DrawMac MACRO Color x ,y
 
 ;     MOV AH, 0Ch
@@ -658,25 +1265,25 @@ DrawPixel endp
 ClearScreen PROC uses ax bx
 
 
-    ;set video mode
-    ; Mov ah,00h ;set video mode
-    ; Mov al,13 ;choose mode 13
-    ; Int 10h
+    ; ;set video mode
+    Mov ah,00h ;set video mode
+    Mov al,13 ;choose mode 13
+    Int 10h
 
- mov al,00h
-    MOV AH,0Bh
-    MOV BH,00h
-    MOV BL,00h
-    INT 10h
+;  mov al,00h
+;     MOV AH,0Bh
+;     MOV BH,00h
+;     MOV BL,00h
+; ;     INT 10h
 
 
-   mov ah,06h
-    xor al,al
-    xor cx,cx
-    mov dh,30
-    mov dl,80
-    mov bh,00010000b
-    int 10h
+;    mov ah,06h
+;     xor al,al
+;     xor cx,cx
+;     mov dh,30
+;     mov dl,80
+;     mov bh,00010000b
+;     int 10h
 
 ; ;  set video mode
 ;     Mov ah,00h ;set video mode
@@ -709,11 +1316,11 @@ ClearScreen PROC uses ax bx
    
 
 
-    ;Set background color
-    MOV AH,0Bh 		
-    MOV BH,00h 		
-    MOV BL,00h 		
-    INT 10h    	
+    ; ;Set background color
+    ; MOV AH,0Bh 		
+    ; MOV BH,00h 		
+    ; MOV BL,00h 		
+    ; INT 10h    	
 
 
 ret
