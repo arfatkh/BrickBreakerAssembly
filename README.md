@@ -14,6 +14,10 @@ The game objective is to eliminate all of the **bricks** at the top of the scree
 
 To win the game, all the **bricks** must be eliminated. The game is split into many levels, which must be completed in sequence. There will be a time limit of 4 minutes and the remaining time will be shown with the counter. The purpose of this game is to complete all the levels without losing all lives. The player will have a maximum of 3 lives.
 
+## Team
+
+- [@arfatkh](https://www.github.com/arfatkh)
+- [@BeastMasterGrinder](https://www.github.com/BeastMasterGrinder)
 
 ## Levels
 
