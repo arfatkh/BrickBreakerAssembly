@@ -9,7 +9,12 @@ Brick Breaker is a classic game where the player controls a paddle to hit a ball
 
 ## Gameplay
 
-(Add video here)
+
+
+https://github.com/arfatkh/BrickBreakerAssembly/assets/25547871/94a6e3e3-6b8a-4912-ac00-b1e3cd7fd918
+
+
+
 
 ## Features
 
